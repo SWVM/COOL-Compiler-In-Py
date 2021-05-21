@@ -1,2 +1,2 @@
 # COOL-Compiler-In-Py
-Another COOL compiler impelmentation in Py
+Another COOL compiler impelmented in Py
