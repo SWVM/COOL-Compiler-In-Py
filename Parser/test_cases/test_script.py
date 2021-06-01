@@ -21,7 +21,7 @@ if __name__ == '__main__':
         if f.suffix == ".cl":
             print(f)
             print("================================================================")
-            subprocess.run(["py", str(to_be_tested), str(f)])
+            subprocess.run(["py", str(to_be_tested), str(f)+"-lex"])
             subprocess.run([str(cool_path), "--parse" , str(f)])
             result = subprocess.run(["fc", str(f)+"-ast", str(f)+"-ast-test"], capture_output=True)
             print("================")
@@ -30,6 +30,7 @@ if __name__ == '__main__':
                 passed_good += 1
             else:
                 print("FAIL")
+                print(result)
                 failed_good += 1
                 failed_file_good.append(f)
             print("================================================================\n\n")
@@ -37,7 +38,7 @@ if __name__ == '__main__':
     print("testing //bad ......")
     for f in  bad.iterdir():
         if f.suffix == ".cl":
-            test_stdout = subprocess.run(["py", str(to_be_tested), str(f)], capture_output=True)
+            test_stdout = subprocess.run(["py", str(to_be_tested), str(f)+"-lex"], capture_output=True)
             ref_stdout  = subprocess.run([str(cool_path), "--parse" , str(f)], capture_output=True)
             print(test_stdout.stdout)
             print(ref_stdout.stdout)

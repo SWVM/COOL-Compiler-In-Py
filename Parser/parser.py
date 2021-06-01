@@ -1,8 +1,27 @@
-# Yacc example
+##################### ##################### ###############
+#                 COOL PARSER IN PY
+# Author: Li Linhan
+# Date:   5/31/2021
+# Dependency:
+#     PLY (Python Lex-Yacc)
+##################### ##################### ###############
 
+from io import StringIO
 import ply.yacc as yacc
-# Get the token map from the lexer.  This is required.
-from lex import tokens
+from ply.lex import LexToken
+
+# Defines terminals
+tokens = (
+    "IDENTIFIER",       "TYPE",     "INTEGER",      "STRING",       "AT",
+    "CASE",             "CLASS",    "COMMA",        "COLON",        "DIVIDE",
+    "DOT",              "ELSE",     "EQUALS",       "ESAC",         "FALSE",
+    "FI",               "IF",       "IN",           "INHERITS",     "ISVOID",
+    "LARROW",           "LBRACE",   "LE",           "LET",          "LOOP",
+    "LPAREN",           "LT",       "MINUS",        "NEW",          "NOT",
+    "OF",               "PLUS",     "POOL",         "RARROW",       "RBRACE",
+    "RPAREN",           "SEMI",     "THEN",         "TILDE",        "TIMES",
+    "TRUE",             "WHILE"
+)
 
 precedence = (
     ("left", "LARROW"),
@@ -16,7 +35,7 @@ precedence = (
     ("left", "DOT"),
 )
 
-
+# The first rule is used as entry point by default
 def p_cool_prog(p):
     '''
     cool_prog   : cool_class SEMI cool_prog
@@ -46,7 +65,6 @@ def p_feature_list(p):
         p[0] = []
     else:
         p[0] = [p[1]] + p[3]
-
 
 def p_feature_method(p):
     '''
@@ -92,6 +110,10 @@ def p_formal(p):
     '''
     p[0] = ((p[1],p.lineno(1)), (p[3],p.lineno(3)))
 
+##################################################
+##  Expression are represented as below
+##  (expr_type, arg1, arg2....., expr_line_number)
+##################################################
 def p_expression_assign(p):
     '''
     expression : IDENTIFIER LARROW expression
@@ -165,9 +187,7 @@ def p_expression_arith(p):
                 | expression TIMES expression
                 | expression DIVIDE expression
     '''
-    #p[2].value is the name of the operation (plus, minus, times, divide)
-    tbl = {'+':"plus", '-':"minus", '*':"times", '/':"divide"}
-    p[0] = (tbl[p[2]], p[1], p[3], p[1][-1])
+    p[0] = (p[2], p[1], p[3], p[1][-1])
 
 def p_expression_negate(p):
     '''
@@ -313,151 +333,210 @@ def p_case_element(p):
 
 # Error rule for syntax errors
 def p_error(p):
-    print("ERROR: %d: Parser: syntax error near %s" % (p.lineno, p.value) )
+    SYMBOLS = {
+        "at":"@",       "comma":",",        "rparen":")",
+        "colon":":",    "divide":"/",       "dot":".",
+        "larrow":"<-",  "lbrace":"{",       "le":"<=",
+        "lparen":"(",   "lt":"<",           "minus":"-",
+        "plus":"+",     "rarrow":"=>",      "rbrace":"}",
+        "semi":";",     "tilde":"~",        "times":"*",
+        "equals":"="
+    }
+    token_value = SYMBOLS[p.value] if p.value in SYMBOLS else p.value
+    print("ERROR: %s: Parser: syntax error near %s" % (p.lineno, token_value) )
     exit(1)
 
 # Build the parser
 parser = yacc.yacc()
 
+########################   Parser rules ends       ############################
+########################   Parser rules ends       ############################
+########################   Parser rules ends       ############################
 
-if __name__ == '__main__':
-    from io import StringIO
-    out_buffer = StringIO()
 
-    def print_lst(func, lst):
-        out_buffer.write(str(len(lst)))
-        out_buffer.write("\n")
+class AST_Printer():
+    def __init__(self, ast):
+        self.out_buffer = StringIO()
+        self.print_lst(self.print_class, ast)
+
+    def get_str(self):
+        return self.out_buffer.getvalue()
+
+    def print_lst(self, func, lst):
+        self.out_buffer.write(str(len(lst)))
+        self.out_buffer.write("\n")
         for item in lst:
             func(item)
 
-    def print_id(i):
-        out_buffer.write(str(i[-1]))
-        out_buffer.write("\n")
-        out_buffer.write(i[0])
-        out_buffer.write("\n")
+    def print_id(self, i):
+        self.out_buffer.write(str(i[-1]))
+        self.out_buffer.write("\n")
+        self.out_buffer.write(i[0])
+        self.out_buffer.write("\n")
 
-    def print_formal(f):
-        print_id(f[0])
-        print_id(f[1])
+    def print_formal(self, f):
+        self.print_id(f[0])
+        self.print_id(f[1])
 
-    def print_feature(f):
+    def print_feature(self, f):
         if f[0] == "method":
-            out_buffer.write(f[0])
-            out_buffer.write("\n")
-            print_id(f[1])
-            print_lst(print_formal, f[2])
-            print_id(f[3])
-            print_expr(f[4])
+            self.out_buffer.write(f[0])
+            self.out_buffer.write("\n")
+            self.print_id(f[1])
+            self.print_lst(self.print_formal, f[2])
+            self.print_id(f[3])
+            self.print_expr(f[4])
         elif f[0] == "attribute_init":
-            out_buffer.write(f[0])
-            out_buffer.write("\n")
-            print_id(f[1])
-            print_id(f[2])
-            print_expr(f[3])
+            self.out_buffer.write(f[0])
+            self.out_buffer.write("\n")
+            self.print_id(f[1])
+            self.print_id(f[2])
+            self.print_expr(f[3])
         elif f[0] == "attribute_no_init":
-            out_buffer.write(f[0])
-            out_buffer.write("\n")
-            print_id(f[1])
-            print_id(f[2])
+            self.out_buffer.write(f[0])
+            self.out_buffer.write("\n")
+            self.print_id(f[1])
+            self.print_id(f[2])
 
-    def print_binding(b):
+    def print_binding(self, b):
         if b[0] == "let_binding_no_init":
-            out_buffer.write(b[0])
-            out_buffer.write("\n")
-            print_id(b[1])
-            print_id(b[2])
+            self.out_buffer.write(b[0])
+            self.out_buffer.write("\n")
+            self.print_id(b[1])
+            self.print_id(b[2])
         elif b[0] == "let_binding_init":
-            out_buffer.write(b[0])
-            out_buffer.write("\n")
-            print_id(b[1])
-            print_id(b[2])
-            print_expr(b[3])
+            self.out_buffer.write(b[0])
+            self.out_buffer.write("\n")
+            self.print_id(b[1])
+            self.print_id(b[2])
+            self.print_expr(b[3])
 
-    def print_case(c):
-        print_id(c[0])
-        print_id(c[1])
-        print_expr(c[2])
+    def print_case(self, c):
+        self.print_id(c[0])
+        self.print_id(c[1])
+        self.print_expr(c[2])
 
-    def print_expr(e):
-        out_buffer.write(str(e[-1]))
-        out_buffer.write("\n")
-        out_buffer.write(e[0])
-        out_buffer.write("\n")
+    def print_expr(self, e):
+        self.out_buffer.write(str(e[-1]))
+        self.out_buffer.write("\n")
+        self.out_buffer.write(e[0])
+        self.out_buffer.write("\n")
         if e[0] == "assign":
-            print_id(e[1])
-            print_expr(e[2])
+            self.print_id(e[1])
+            self.print_expr(e[2])
         elif e[0] == "static_dispatch":
-            print_expr(e[1])
-            print_id(e[2])
-            print_id(e[3])
-            print_lst(print_expr, e[4])
+            self.print_expr(e[1])
+            self.print_id(e[2])
+            self.print_id(e[3])
+            self.print_lst(self.print_expr, e[4])
         elif e[0] == "dynamic_dispatch":
-            print_expr(e[1])
-            print_id(e[2])
-            print_lst(print_expr, e[3])
+            self.print_expr(e[1])
+            self.print_id(e[2])
+            self.print_lst(self.print_expr, e[3])
         elif e[0] == "self_dispatch":
-            print_id(e[1])
-            print_lst(print_expr, e[2])
+            self.print_id(e[1])
+            self.print_lst(self.print_expr, e[2])
         elif e[0] == "if":
-            print_expr(e[1])
-            print_expr(e[2])
-            print_expr(e[3])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
+            self.print_expr(e[3])
         elif e[0] == "while":
-            print_expr(e[1])
-            print_expr(e[2])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
         elif e[0] == "block":
-            print_lst(print_expr, e[1])
+            self.print_lst(self.print_expr, e[1])
         elif e[0] == "let":
-            print_lst(print_binding, e[1])
-            print_expr(e[2])
+            self.print_lst(self.print_binding, e[1])
+            self.print_expr(e[2])
         elif e[0] == "case":
-            print_expr(e[1])
-            print_lst(print_case, e[2])
+            self.print_expr(e[1])
+            self.print_lst(self.print_case, e[2])
         elif e[0] == "new":
-            print_id(e[1])
+            self.print_id(e[1])
         elif e[0] == "isvoid":
-            print_expr(e[1])
+            self.print_expr(e[1])
         elif e[0] in ["plus","minus","times","divide"]:
-            print_expr(e[1])
-            print_expr(e[2])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
         elif e[0] == "negate":
-            print_expr(e[1])
+            self.print_expr(e[1])
         elif e[0] == "lt":
-            print_expr(e[1])
-            print_expr(e[2])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
         elif e[0] == "le":
-            print_expr(e[1])
-            print_expr(e[2])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
         elif e[0] == "eq":
-            print_expr(e[1])
-            print_expr(e[2])
+            self.print_expr(e[1])
+            self.print_expr(e[2])
         elif e[0] == "not":
-            print_expr(e[1])
+            self.print_expr(e[1])
         elif e[0] == "identifier":
-            print_id(e[1])
+            self.print_id(e[1])
         elif e[0] == "integer":
-            out_buffer.write(e[1])
-            out_buffer.write("\n")
+            self.out_buffer.write(e[1])
+            self.out_buffer.write("\n")
         elif e[0] == "string":
-            out_buffer.write(e[1])
-            out_buffer.write("\n")
+            self.out_buffer.write(e[1])
+            self.out_buffer.write("\n")
         elif e[0] in ["true", "false"]:
             pass
         else:
             raise TypeError("unknown expression type" + e[0])
 
-    def print_class(cl):
-        print_id(cl[1])
-        out_buffer.write(cl[0])
-        out_buffer.write("\n")
+    def print_class(self, cl):
+        self.print_id(cl[1])
+        self.out_buffer.write(cl[0])
+        self.out_buffer.write("\n")
         if cl[2]:
-            print_id(cl[2])
-        print_lst(print_feature, cl[3])
+            self.print_id(cl[2])
+        self.print_lst(self.print_feature, cl[3])
 
+class CL_LEX_tokenizer():
+    def __init__(self, fname):
+        self.fname      = fname
+        self.tokens = []
+        self.read_tokens()
+
+
+    # ugly code that works for valid .cl-lex file
+    def read_tokens(self):
+        fin = open(self.fname, "r")
+
+        while True:
+            tok = LexToken()
+            tok.lineno = fin.readline()[:-1]
+            if not tok.lineno:
+                break
+            tok.value   = fin.readline()[:-1]
+            tok.type = str.upper(tok.value)
+            if tok.type in ["INTEGER","STRING","TYPE","IDENTIFIER"]:
+                tok.value = fin.readline()[:-1]
+            tok.lexpos = 0
+            self.tokens.append(tok)
+
+        self.ptr = -1
+        self.len = len(self.tokens)
+        fin.close()
+
+
+    # x.token() function required by the parser.
+    def token(self):
+        self.ptr += 1
+        if self.ptr == self.len:
+            return None
+        else:
+            return self.tokens[self.ptr]
+
+
+if __name__ == '__main__':
     import sys
-    f = open(sys.argv[1], "r")
-    result = parser.parse(f.read())
-    print_lst(print_class, result)
-    f_out = open(sys.argv[1] + "-ast-test","w")
-    f_out.write(out_buffer.getvalue())
+    input_file_name = sys.argv[1]
+    out_file_name = input_file_name[:-3] + "ast-test"
+
+    lexer = CL_LEX_tokenizer(input_file_name)
+    ast = parser.parse(lexer=lexer)
+
+    f_out = open(out_file_name, "w")
+    f_out.write(AST_Printer(ast).get_str())
     f_out.close()
