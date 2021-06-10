@@ -6,20 +6,32 @@ from Cool_expr import *
 
 class Cool_class():
     ID_OBJECT = Cool_Id("Object", "0")
+    NON_INHERITALE = ["Int", "Bool", "String"]
     classes = {} # hash map that holds all classes
 
-    # find a class by name, from loaded classes
+
+    def check_main():
+        try:
+            class_Main = classes["Main"]
+        except:
+            raise Exception("ERROR: 0: Type-Check: class Main not found")
+        try:
+            method_main= class_Main.get_methods["main"]
+        except:
+            raise Exception("ERROR: 0: Type-Check: class Main method main not found")
+        try:
+            assert len(method_main.formals) == 0
+        except:
+            raise Exception("ERROR: 0: Type-Check: class Main method main with 0 parameters not found")
+
+
     def fetch_class(cname):
+        print(type(cname))
         try:
             return Cool_class.classes[cname.name]
         except:
             raise Exception("class not found: " + str(cname))
 
-    # fix references between Cool_class instances
-    def update_parent_mapping():
-        for cl in Cool_class.classes.values():
-            if isinstance(cl.parent, Cool_Id):
-                cl.parent = Cool_class.fetch_class(cl.parent)
 
     # read a class from .cl-ast file
     def read(fin):
@@ -33,9 +45,12 @@ class Cool_class():
         return Cool_class(cname, parent, features)
 
 
-    def __init__(self, name, parent, features = []):
+    def __init__(self, name, parent = ID_OBJECT, features = []):
         if name.name in Cool_class.classes:
             raise Exception("redefinition of class: " + name.name)
+        if (parent != None and parent.name) in Cool_class.NON_INHERITALE:
+            raise Exception("inherits from forbidden class" + parent.name)
+
         self.name = name
         self.parent = parent
         self.attributes = {}
@@ -61,10 +76,13 @@ class Cool_class():
         self.methods[m.get_name()] = m
 
     def pull_from_parent(self):
-        if self.PulledFromParents or self.parent == None:
+        self.PulledFromParents = True
+        if self.parent == None:
             return
 
-        inherited_m = self.parent.get_methods()
+        parent = Cool_class.fetch_class(self.parent)
+
+        inherited_m = parent.get_methods()
         for k in self.methods.keys():
             if k in inherited_m:
                 if inherited_m[k].signiture   !=  self.methods[k].signiture:
@@ -75,14 +93,12 @@ class Cool_class():
             inherited_m[k] = self.methods[k]
         self.methods = inherited_m
 
-        inherited_attris  = self.parent.get_attris()
+        inherited_attris  = parent.get_attris()
         for k in self.attributes.keys():
             if k in inherited_attris:
                 raise Exception("redefinition of attribute: " + k)
             inherited_attris[k] = self.attributes[k]
-
         self.attributes = inherited_attris
-        self.PulledFromParents = True
 
     def get_methods(self):
         if not self.PulledFromParents:
@@ -94,7 +110,7 @@ class Cool_class():
         return copy(self.attributes)
 
     def __str__(self):
-        return "=======\nclass: %s\nPARENT: %s\n ATTRI: \n%s\nMETHODS: %s\n=======" % (self.name, self.parent.name, self.attributes, self.methods)
+        return "=======\nclass: %s\nPARENT: %s\n ATTRI: \n%s\nMETHODS: %s\n=======" % (self.name, "self.parent.name", self.attributes, self.methods)
 
 
 class Cool_feature():

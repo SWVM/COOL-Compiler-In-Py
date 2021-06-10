@@ -302,7 +302,13 @@ class Expr_Case(Cool_expr):
     def __init__(self, line, expr, elements):
         self.expr = expr
         self.elements = elements
+        super().__init__(line)
     def read(fin, **kwargs):
         expr     = Cool_expr.read(fin)
         elements = read_lst(Expr_Case.Element.read, fin)
         return Expr_Case(kwargs["line"], expr, elements)
+
+class Expr_Internal(Cool_expr):
+    def __init__(self, static_type, details):
+        self.details = details
+        super().__init__(0, static_type = static_type)
