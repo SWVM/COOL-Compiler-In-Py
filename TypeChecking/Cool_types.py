@@ -3,24 +3,6 @@ from Helpers import *
 from Cool_expr import *
 # will have to pass typing enviroment as OJB
 
-class Cool_Id():
-    def read(fin):
-        line = fin.readline()[:-1]
-        name = fin.readline()[:-1]
-        return Cool_Id(name, line)
-
-    def __init__(self, name, line):
-        self.name = name
-        self.line = line
-    def __str__(self):
-        return "Id: %s \t at line %s\n" % (self.name, self.line)
-    def __repr__(self):
-        return self.__str__()
-
-    def get_name(self):
-        return self.name
-
-
 
 class Cool_class():
     ID_OBJECT = Cool_Id("Object", "0")
@@ -131,7 +113,7 @@ class Cool_feature():
             name = Cool_Id.read(fin)
             atype = Cool_Id.read(fin)
             expr = Cool_expr.read(fin)
-            f =  Cool_attri(name, type, expr)
+            f =  Cool_attri(name, atype, expr)
         elif ftype == "attribute_no_init":
             name = Cool_Id.read(fin)
             atype = Cool_Id.read(fin)
