@@ -1,8 +1,6 @@
-class Test {
-  foo:Test;
+class Main{
+  b:Int<-b;
+  main():Int{0};
   baz():String { {"Single Expression";}};
 };
-class Main {
-  main(a:Int):Int{0};
-
-};
+class SELF_TYPE{};

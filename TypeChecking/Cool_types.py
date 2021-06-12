@@ -1,18 +1,51 @@
-from copy import deepcopy, copy
 from Helpers import *
 from Cool_expr import *
 # will have to pass typing enviroment as OJB
 
 
-class Cool_class():
-    ID_OBJECT = Cool_Id("Object", "0")
-    NON_INHERITALE = ["Int", "Bool", "String"]
-    classes = {} # hash map that holds all classes
+class Cool_prog():
+    def __init__(self, fname):
+        fin = open(fname, "r")
+        self.inheritance = Pedigree()
+        self.classes = {}
+        cls = [OBJECT, STRING, INT, BOOL, IO] + read_lst(Cool_class.read, fin)
+
+        for c in cls:
+            self.add_class(c)
 
 
-    def check_main():
+    def add_class(self, c):
+        if c.get_name() in self.classes:
+            raise Exception("redefinition of class: " + name.name)
+        if c.parent: self.inheritance.add_edge(c.parent.get_name(), c.get_name())
+        self.classes[c.get_name()] = c
+        c.set_prog(self)
+
+    def fetch_class(self, cname):
         try:
-            class_Main = classes["Main"]
+            return self.classes[cname.name]
+        except:
+            raise Exception("class not found: " + str(cname))
+
+    def typeCheck(self):
+        cycle = self.inheritance.get_cycle()
+        if cycle:
+            raise Exception("inheritance cycle: "+ str(cycle))
+
+        for c in self.classes.values():
+            c.typeCheck()
+
+    def get_method_env(self):
+        m = {}
+        for c in self.classes.values():
+            for m in c.get_methods():
+                m[(c.get_name(), m.get_name())] = m
+        return m
+
+
+    def check_main(self):
+        try:
+            class_Main = self.classes["Main"]
         except:
             raise Exception("ERROR: 0: Type-Check: class Main not found")
         try:
@@ -25,13 +58,28 @@ class Cool_class():
             raise Exception("ERROR: 0: Type-Check: class Main method main with 0 parameters not found")
 
 
-    def fetch_class(cname):
-        print(type(cname))
-        try:
-            return Cool_class.classes[cname.name]
-        except:
-            raise Exception("class not found: " + str(cname))
+class Cool_class():
+    DEFAULT_PARENT = Cool_Id("Object", "0")
+    NON_INHERITABLE = ["Int", "Bool", "String"]
 
+    def typeCheck(self):
+        # care about yourself
+        attris = self.get_attris()
+        methods = self.get_methods()
+        env = Typing_env(   o = self.get_init_obj_env(),
+                            m = self.prog.get_method_env(),
+                            c = self.get_name())
+        for a in attris:
+            a.typeCheck(env)
+        for m in methods:
+            m.typeCheck(env)
+        # TODO: handle the rest
+
+
+
+
+
+        raise Exception("not yet")
 
     # read a class from .cl-ast file
     def read(fin):
@@ -40,18 +88,18 @@ class Cool_class():
         if inherit == "inherits":
             parent = Cool_Id.read(fin)
         else:
-            parent = Cool_class.ID_OBJECT
+            parent = Cool_class.DEFAULT_PARENT
         features = read_lst(Cool_feature.read, fin, args=[cname])
-        return Cool_class(cname, parent, features)
+        return Cool_class(cname, parent = parent, features = features)
 
-
-    def __init__(self, name, parent = ID_OBJECT, features = []):
-        if name.name in Cool_class.classes:
-            raise Exception("redefinition of class: " + name.name)
-        if (parent != None and parent.name) in Cool_class.NON_INHERITALE:
+    def __init__(self, name, parent = DEFAULT_PARENT, features = [], prog = None):
+        if parent != None and parent.name in Cool_class.NON_INHERITABLE:
             raise Exception("inherits from forbidden class" + parent.name)
+        if name.get_name() == "SELF_TYPE":
+            raise Exception("class named SELF_TYPE")
 
         self.name = name
+        self.prog = prog
         self.parent = parent
         self.attributes = {}
         self.methods = {}
@@ -61,9 +109,24 @@ class Cool_class():
             elif isinstance(f, Cool_attri):
                 self.add_attris(f)
         self.PulledFromParents = False
-        Cool_class.classes[name.name] = self
+
+    def get_init_obj_env(self):
+        ## TODO: get attris, without initalizer.
+        o = {}
+        o = []
+        for a in self.get_attris():
+            o[a.get_name()] = a.get_type()
+        return o
+
+    def set_prog(self, prog):
+        self.prog = prog
+
+    def get_name(self):
+        return self.name.get_name()
 
     def add_attris(self, a):
+        if a.get_name() == self:
+            raise Exception("xx has attri named self")
         if a.get_name() in self.attributes:
             raise Exception("redefinition of attribute: " + a.name)
         self.attributes[a.get_name()] = a
@@ -80,7 +143,7 @@ class Cool_class():
         if self.parent == None:
             return
 
-        parent = Cool_class.fetch_class(self.parent)
+        parent = self.prog.fetch_class(self.parent)
 
         inherited_m = parent.get_methods()
         for k in self.methods.keys():
@@ -143,9 +206,10 @@ class Cool_feature():
         self.declared_type = declared_type
 
     def get_name(self):
-        return  self.name.name
+        return  self.name.get_name()
     def get_type(self):
-        return self.declared_type.name
+        return self.declared_type.get_name()
+
 
 class Cool_attri(Cool_feature):
     def __init__(self, name, declared_type, init_expr = None):
@@ -165,7 +229,7 @@ class Cool_method(Cool_feature):
         self.formals = formals
         self.declared_type = declared_type
         self.signiture = list(map(lambda x: x.get_type(), self.formals))
-        self.return_type   = declared_type.get_name
+        self.return_type   = declared_type.get_name()
         self.body_expr = body_expr
         self.owner = owner
         super().__init__(name, declared_type)
@@ -196,3 +260,92 @@ class Cool_formal():
         return self.declared_type.get_name()
     def get_name(self):
         return self.name.get_name()
+
+
+
+M_abort = Cool_method(  Cool_Id("abort","0"),
+                        [],
+                        Cool_Id("Object","0"),
+                        Expr_Internal(  Cool_Id("Object",0),
+                                        "Object.abort")
+)
+M_copy = Cool_method(  Cool_Id("copy","0"),
+                        [],
+                        Cool_Id("SELF_TYPE","0"),
+                        Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                                        "Object.copy")
+)
+M_type_name = Cool_method(  Cool_Id("type_name","0"),
+                        [],
+                        Cool_Id("String","0"),
+                        Expr_Internal(  Cool_Id("String",0),
+                                        "Object.type_name")
+)
+OBJECT = Cool_class( Cool_Id("Object","0"), parent = None,   features = [M_abort ,M_copy, M_type_name] )
+
+M_out_string = Cool_method(  Cool_Id("out_string","0"),
+                             [
+                                Cool_formal( Cool_Id("x", "0"), Cool_Id("String", "0"))
+                             ],
+                             Cool_Id("SELF_TYPE","0"),
+                             Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                                            "IO.out_string")
+)
+M_out_int    = Cool_method(  Cool_Id("out_int","0"),
+                             [
+                                Cool_formal( Cool_Id("x", "0"), Cool_Id("Int", "0"))
+                             ],
+                             Cool_Id("SELF_TYPE","0"),
+                             Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                                            "IO.out_int")
+)
+M_in_string  = Cool_method(  Cool_Id("in_string","0"),
+                             [],
+                             Cool_Id("String","0"),
+                             Expr_Internal(  Cool_Id("String",0),
+                                            "IO.in_string")
+)
+M_in_int     = Cool_method(  Cool_Id("in_int","0"),
+                             [],
+                             Cool_Id("Int","0"),
+                             Expr_Internal(  Cool_Id("Int",0),
+                                            "IO.in_int")
+)
+IO = Cool_class(    Cool_Id("IO","0"),
+                    features=[M_out_string, M_out_int, M_in_string, M_in_int]
+                )
+
+INT = Cool_class(   Cool_Id("Int","0"),
+                    features=[]
+                )
+
+M_length    = Cool_method(  Cool_Id("length","0"),
+                             [],
+                             Cool_Id("Int","0"),
+                             Expr_Internal(  Cool_Id("Int",0),
+                                            "String.length")
+)
+M_concat    = Cool_method(  Cool_Id("concat","0"),
+                             [
+                                Cool_formal( Cool_Id("s", "0"), Cool_Id("String", "0"))
+                             ],
+                             Cool_Id("String","0"),
+                             Expr_Internal(  Cool_Id("String",0),
+                                            "String.concat")
+)
+M_substr    = Cool_method(  Cool_Id("substr","0"),
+                             [
+                                Cool_formal( Cool_Id("i", "0"), Cool_Id("Int", "0")),
+                                Cool_formal( Cool_Id("l", "0"), Cool_Id("Int", "0"))
+                             ],
+                             Cool_Id("String","0"),
+                             Expr_Internal(  Cool_Id("String",0),
+                                            "String.substr")
+)
+STRING = Cool_class(    Cool_Id("String","0"),
+                        features=[M_length, M_concat, M_substr]
+                    )
+
+BOOL = Cool_class(      Cool_Id("Bool","0"),
+                        features=[]
+                    )

@@ -19,7 +19,11 @@ class Cool_Id():
         return self.name
 
 class Typing_env():
-    def __init__(self, debug = False):
+    def __init__(self, o = None, m = None, c = None, debug = False):
+        print("Initializing TE")
+        print(o)
+        print(m)
+        print(c)
         self.o = {}
         self.m = {}
         self.c = None
@@ -36,6 +40,8 @@ class Typing_env():
         pass
 
 class Cool_expr():
+    INHERITANCE_GRAPH = None
+
     # factory class
     def read(fin):
         kwargs = {}  # holds extra details for sub classes
