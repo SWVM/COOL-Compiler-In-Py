@@ -38,6 +38,9 @@ class Pedigree():
             self.nodes[name] =  Pedigree.Node(name)
         return self.nodes[name]
 
+    def has_node(self, name):
+        return name in self.nodes
+
     def add_node(self, name):
         self.get_node(name)
 
@@ -48,7 +51,7 @@ class Pedigree():
         child.set_parent(parent)
 
     def is_child(self, a, b):
-        return b in pedi.get_node("a").path_to_root()
+        return b in self.get_node(a).path_to_root()
 
     def lub(self, a, b):
         a = self.nodes[a].path_to_root()
@@ -85,4 +88,4 @@ if __name__ == '__main__':
     pedi.add_edge("c","d")
     pedi.add_edge("c","z")
     pedi.add_edge("b","i")
-    print(pedi.get_node("a").path_to_root())
+    print(pedi.is_child("a","a"))

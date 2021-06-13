@@ -33,14 +33,14 @@ class Cool_prog():
             raise Exception("inheritance cycle: "+ str(cycle))
 
         for c in self.classes.values():
-            c.typeCheck()
+            c.typeCheck(self.inheritance)
 
     def get_method_env(self):
-        m = {}
+        method_env = {}
         for c in self.classes.values():
-            for m in c.get_methods():
-                m[(c.get_name(), m.get_name())] = m
-        return m
+            for m in c.get_methods().values():
+                method_env[(c.get_name(), m.get_name())] = m
+        return method_env
 
 
     def check_main(self):
@@ -62,24 +62,17 @@ class Cool_class():
     DEFAULT_PARENT = Cool_Id("Object", "0")
     NON_INHERITABLE = ["Int", "Bool", "String"]
 
-    def typeCheck(self):
+    def typeCheck(self, inheritance):
         # care about yourself
-        attris = self.get_attris()
-        methods = self.get_methods()
+        attris = self.get_attris().values()
+        methods = self.get_methods().values()
         env = Typing_env(   o = self.get_init_obj_env(),
                             m = self.prog.get_method_env(),
                             c = self.get_name())
         for a in attris:
-            a.typeCheck(env)
+            a.typeCheck(env.copy(), inheritance)
         for m in methods:
-            m.typeCheck(env)
-        # TODO: handle the rest
-
-
-
-
-
-        raise Exception("not yet")
+            m.typeCheck(env.copy(), inheritance)
 
     # read a class from .cl-ast file
     def read(fin):
@@ -113,8 +106,7 @@ class Cool_class():
     def get_init_obj_env(self):
         ## TODO: get attris, without initalizer.
         o = {}
-        o = []
-        for a in self.get_attris():
+        for a in self.get_attris().values():
             o[a.get_name()] = a.get_type()
         return o
 
@@ -192,18 +184,22 @@ class Cool_feature():
             name = Cool_Id.read(fin)
             atype = Cool_Id.read(fin)
             expr = Cool_expr.read(fin)
-            f =  Cool_attri(name, atype, expr)
+            f =  Cool_attri(name, atype, owner, expr)
         elif ftype == "attribute_no_init":
             name = Cool_Id.read(fin)
             atype = Cool_Id.read(fin)
-            f =  Cool_attri(name, atype)
+            f =  Cool_attri(name, atype, owner)
         else:
             raise Exception("unknown feature: " + ftype)
         return f
 
-    def __init__(self, name, declared_type):
+    def __init__(self, name, declared_type, owner):
         self.name = name
         self.declared_type = declared_type
+        self.owner = owner
+
+    def typeCheck(self, env, inheritance):
+        raise Exception("to be override")
 
     def get_name(self):
         return  self.name.get_name()
@@ -212,9 +208,22 @@ class Cool_feature():
 
 
 class Cool_attri(Cool_feature):
-    def __init__(self, name, declared_type, init_expr = None):
+    def typeCheck(self, env, inheritance):
+        declared_type = self.declared_type.get_name()
+
+        if not inheritance.has_node(declared_type):
+            raise Exception("class x has attri x with unknown type x")
+
+        if self.init_expr:
+            init_type = self.init_expr.typeCheck(env.copy(), inheritance)
+            if not inheritance.is_child(declared_type, init_type):
+                raise Exception("initializer does not conform attri")
+
+        return declared_type
+
+    def __init__(self, name, declared_type, owner, init_expr = None):
         self.init_expr = init_expr
-        super().__init__(name, declared_type)
+        super().__init__(name, declared_type, owner)
     def __str__(self):
         if self.init_expr:
             return "ATTRI_INIT: "+str(self.name.name) + str(self.declared_type.name) + str(self.init_expr) +"\n"
@@ -225,14 +234,44 @@ class Cool_attri(Cool_feature):
 
 
 class Cool_method(Cool_feature):
-    def __init__(self, name, formals, declared_type, body_expr, owner = None):
+    def typeCheck(self, env, inheritance):
+        # TODO: WHERE YOU LEFT
+        declared_type = self.declared_type.get_name()
+        env = env.copy()
+        formal_vars = {}
+        for f in self.formals:
+            fname = f.get_name()
+            ftype = f.get_type()
+            if fname == "self":
+                raise Exception("class %s method %s has formal named self" % (self.owner, self.get_name()))
+            if not inheritance.has_node(ftype):
+                raise Exception("class %s method %s has unknwon return type %s" % (self.owner, self.get_name(),ftype))
+            if fname in formal_vars:
+                raise Exception("class %s method %s with duplicated formal parameters named %s" % (self.owner, self.get_name(),fname))
+            formal_vars[fname] = ftype
+        env.add_vars(formal_vars)
+        rtype = self.declared_type.get_name()
+        if rtype == "SELF_TYPE":
+            rtype = env.get_selftype()
+        if not inheritance.has_node(rtype):
+            raise Exception("class %s mehtod %s has unkwnon return type %s" % (self.owner, self.get_name(), rtype))
+
+        expr_type     = self.body_expr.typeCheck(env, inheritance)
+        if not inheritance.is_child(declared_type, expr_type):
+            raise Exception("%s does not conform with %s in mehtod %s" % (expr_type, declared_type, self.get_name()))
+
+        return declared_type
+
+    def __init__(self, name, formals, declared_type, body_expr, owner):
         self.formals = formals
         self.declared_type = declared_type
         self.signiture = list(map(lambda x: x.get_type(), self.formals))
         self.return_type   = declared_type.get_name()
         self.body_expr = body_expr
-        self.owner = owner
-        super().__init__(name, declared_type)
+        super().__init__(name, declared_type, owner)
+
+    def get_formals(self):
+        return self.formals
 
     def get_name(self):
         return self.name.get_name()
@@ -267,19 +306,22 @@ M_abort = Cool_method(  Cool_Id("abort","0"),
                         [],
                         Cool_Id("Object","0"),
                         Expr_Internal(  Cool_Id("Object",0),
-                                        "Object.abort")
+                                        "Object.abort"),
+                        "Object"
 )
 M_copy = Cool_method(  Cool_Id("copy","0"),
                         [],
                         Cool_Id("SELF_TYPE","0"),
                         Expr_Internal(  Cool_Id("SELF_TYPE",0),
-                                        "Object.copy")
+                                        "Object.copy"),
+                        "Object"
 )
 M_type_name = Cool_method(  Cool_Id("type_name","0"),
                         [],
                         Cool_Id("String","0"),
                         Expr_Internal(  Cool_Id("String",0),
-                                        "Object.type_name")
+                                        "Object.type_name"),
+                        "Object"
 )
 OBJECT = Cool_class( Cool_Id("Object","0"), parent = None,   features = [M_abort ,M_copy, M_type_name] )
 
@@ -289,7 +331,8 @@ M_out_string = Cool_method(  Cool_Id("out_string","0"),
                              ],
                              Cool_Id("SELF_TYPE","0"),
                              Expr_Internal(  Cool_Id("SELF_TYPE",0),
-                                            "IO.out_string")
+                                            "IO.out_string"),
+                            "IO"
 )
 M_out_int    = Cool_method(  Cool_Id("out_int","0"),
                              [
@@ -297,19 +340,22 @@ M_out_int    = Cool_method(  Cool_Id("out_int","0"),
                              ],
                              Cool_Id("SELF_TYPE","0"),
                              Expr_Internal(  Cool_Id("SELF_TYPE",0),
-                                            "IO.out_int")
+                                            "IO.out_int"),
+                            "IO"
 )
 M_in_string  = Cool_method(  Cool_Id("in_string","0"),
                              [],
                              Cool_Id("String","0"),
                              Expr_Internal(  Cool_Id("String",0),
-                                            "IO.in_string")
+                                            "IO.in_string"),
+                            "IO"
 )
 M_in_int     = Cool_method(  Cool_Id("in_int","0"),
                              [],
                              Cool_Id("Int","0"),
                              Expr_Internal(  Cool_Id("Int",0),
-                                            "IO.in_int")
+                                            "IO.in_int"),
+                            "IO"
 )
 IO = Cool_class(    Cool_Id("IO","0"),
                     features=[M_out_string, M_out_int, M_in_string, M_in_int]
@@ -323,7 +369,8 @@ M_length    = Cool_method(  Cool_Id("length","0"),
                              [],
                              Cool_Id("Int","0"),
                              Expr_Internal(  Cool_Id("Int",0),
-                                            "String.length")
+                                            "String.length"),
+                            "String"
 )
 M_concat    = Cool_method(  Cool_Id("concat","0"),
                              [
@@ -331,7 +378,8 @@ M_concat    = Cool_method(  Cool_Id("concat","0"),
                              ],
                              Cool_Id("String","0"),
                              Expr_Internal(  Cool_Id("String",0),
-                                            "String.concat")
+                                            "String.concat"),
+                            "String"
 )
 M_substr    = Cool_method(  Cool_Id("substr","0"),
                              [
@@ -340,7 +388,8 @@ M_substr    = Cool_method(  Cool_Id("substr","0"),
                              ],
                              Cool_Id("String","0"),
                              Expr_Internal(  Cool_Id("String",0),
-                                            "String.substr")
+                                            "String.substr"),
+                            "String"
 )
 STRING = Cool_class(    Cool_Id("String","0"),
                         features=[M_length, M_concat, M_substr]

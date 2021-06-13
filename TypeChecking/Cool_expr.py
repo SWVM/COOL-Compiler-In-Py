@@ -19,26 +19,34 @@ class Cool_Id():
         return self.name
 
 class Typing_env():
-    def __init__(self, o = None, m = None, c = None, debug = False):
-        print("Initializing TE")
-        print(o)
-        print(m)
-        print(c)
-        self.o = {}
-        self.m = {}
-        self.c = None
-        self.debug = debug
+    def __init__(self, o = None, m = None, c = None, do_debug = False):
+        self.o = o
+        self.m = m
+        self.c = c
+        self.do_debug = do_debug
+    def debug(self):
+        print(self.o)
+        print(self.m)
+        print(self.c)
     def clear(self):
         self.__init__(debug == self.debug)
-    def cp():
+    def copy(self):
         return deepcopy(self)
     def add_method(self, method):
         pass
     def add_var(self, var):
         pass
+    def add_vars(self, vars):
+        self.o.update(vars)
     def set_class(self, cname):
         pass
-
+    def get_selftype(self):
+        return self.c
+    def typeof(self, cid):
+        var_name = cid.get_name()
+        if not var_name in self.o:
+            raise Exception("unbound identifier %s" % (var_name))
+        return self.o[var_name]
 class Cool_expr():
     INHERITANCE_GRAPH = None
 
@@ -95,7 +103,7 @@ class Cool_expr():
     def get_type(self, env):
         return self.static_type if self.static_type else self.eval()
 
-    def eval(self):
+    def typeCheck(self, env, inheirtance):
         raise Exception("eval not overriden")
 
     def __str__(self):
@@ -236,6 +244,9 @@ class Expr_Negate(Cool_expr):
         return Expr_Negate(kwargs["line"], e)
 
 class Expr_Integer(Cool_expr):
+    def typeCheck(self, env, inheirtance):
+        return "Int"
+
     def __init__(self, line, int_value):
         self.int_value = int_value
         super().__init__(line)
@@ -246,6 +257,9 @@ class Expr_Integer(Cool_expr):
         return "int: " + self.int_value + "\n"
 
 class Expr_String(Cool_expr):
+    def typeCheck(self, env, inheirtance):
+        return "String"
+
     def __init__(self, line, str_value):
         self.str_value = str_value
         super().__init__(line)
@@ -254,6 +268,9 @@ class Expr_String(Cool_expr):
         return Expr_String(kwargs["line"], s)
 
 class Expr_Id(Cool_expr):
+    def typeCheck(self, env, inheirtance):
+        return env.typeof(self.cool_id)
+
     def __init__(self, line, cool_id):
         self.cool_id = cool_id
         super().__init__(line)
@@ -262,6 +279,8 @@ class Expr_Id(Cool_expr):
         return Expr_Id(kwargs["line"], i)
 
 class Expr_Bool(Cool_expr):
+    def typeCheck(self, env, inheirtance):
+        return "Bool"
     def __init__(self, line, bool_value):
         self.bool_value = bool_value
         super().__init__(line)
@@ -315,6 +334,9 @@ class Expr_Case(Cool_expr):
         return Expr_Case(kwargs["line"], expr, elements)
 
 class Expr_Internal(Cool_expr):
+    def typeCheck(self, env, inheirtance):
+        return self.static_type.get_name()
+
     def __init__(self, static_type, details):
         self.details = details
         super().__init__(0, static_type = static_type)
