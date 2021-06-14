@@ -14,9 +14,23 @@ class Cool_Id():
         return "Id: %s \t at line %s\n" % (self.name, self.line)
     def __repr__(self):
         return self.__str__()
-
     def get_name(self):
         return self.name
+
+class Cool_type():
+    def __init__(self, tname, selftype = False):
+        self.tname = tname
+        self.selftype = selftype
+
+    def __eq__(self, other):
+        return self.tname == other.tname
+
+    def __str__(self):
+        if self.selftype:
+            return "SELF_TYPE(%s)" % self.tname
+        else:
+            return self.tname
+
 
 class Typing_env():
     def __init__(self, o = None, m = None, c = None, do_debug = False):
@@ -42,6 +56,14 @@ class Typing_env():
         pass
     def get_selftype(self):
         return self.c
+    def get_method_signiture(self, c, m):
+        if not (c, m) in self.m:
+            raise Exception("unbound method %s" % (var_name))
+        return self.m[(c,m)].signiture
+    def get_method_return(self, c, m):
+        if not (c, m) in self.m:
+            raise Exception("unbound method %s" % (var_name))
+        return self.m[(c,m)].return_type
     def typeof(self, cid):
         var_name = cid.get_name()
         if not var_name in self.o:
@@ -130,6 +152,20 @@ class Expr_Assign(Cool_expr):
         return "assign\n"
 
 class Expr_DDispatch(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t0 = self.expr.typeCheck(env, inheritance)
+        mname = self.method.get_name()
+        signiture = env.get_method_signiture(t0, mname)
+        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        if not len(signiture) == len(arguments):
+            raise Exception("wrong number of acttualy arguments")
+        for i in range(len(signiture)):
+            if not signiture[i] == arguments[i]:
+                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+        rtype = env.get_method_return(t0, mname)
+        if rtype == "SELF_TYPE":
+            rtype = env.get_selftype()
+        return rtype
 
     def __init__(self, line, expr, method, args):
         self.expr = expr
@@ -143,6 +179,24 @@ class Expr_DDispatch(Cool_expr):
         return Expr_DDispatch(kwargs["line"], e, m ,args)
 
 class Expr_SDispatch(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t0 = self.expr.typeCheck(env, inheritance)
+        t  = self.target.get_name()
+        if not inheritance.get_node(t0).is_child(t):
+            raise Exception("%s does not conform to %s in static static dispatch" % (t0, t))
+        mname = self.method.get_name()
+        signiture = env.get_method_signiture(t, mname)
+        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        if not len(signiture) == len(arguments):
+            raise Exception("wrong number of acttualy arguments")
+        for i in range(len(signiture)):
+            if not signiture[i] == arguments[i]:
+                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+        rtype = env.get_method_return(t0, mname)
+        if rtype == "SELF_TYPE":
+            rtype = env.get_selftype()
+        return rtype
+
     def __init__(self, line, expr, target, method, args):
         self.expr = expr
         self.target = target
@@ -157,6 +211,21 @@ class Expr_SDispatch(Cool_expr):
         return Expr_SDispatch(kwargs["line"], e, t, m, args)
 
 class Expr_SelfDispatch(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t0 = env.get_selftype()
+        mname = self.method.get_name()
+        signiture = env.get_method_signiture(t0, mname)
+        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        if not len(signiture) == len(arguments):
+            raise Exception("wrong number of acttualy arguments")
+        for i in range(len(signiture)):
+            if not signiture[i] == arguments[i]:
+                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+        rtype = env.get_method_return(t0, mname)
+        if rtype == "SELF_TYPE":
+            rtype = env.get_selftype()
+        return rtype
+
     def __init__(self, line, method, args):
         self.method = method
         self.args = args
@@ -189,10 +258,10 @@ class Expr_If(Cool_expr):
 
 class Expr_While(Cool_expr):
     def typeCheck(self, env, inheritance):
-        predicate_type = self.predicate.typeCheck(env.copy(), inheritance)
+        predicate_type = self.predicate.typeCheck(env, inheritance)
         if not predicate_type == "Bool":
             raise Exception("conditional has type %s instead of bool" % predicate_type)
-        self.body.typeCheck(env.copy(), inheritance)
+        self.body.typeCheck(env, inheritance)
 
         return "Object"
 
@@ -351,6 +420,8 @@ class Expr_Bool(Cool_expr):
         return Expr_Bool(kwargs["line"], kwargs["ename"])
 
 class Expr_Let(Cool_expr):
+
+
     class Binding():
         def __init__(self, name, btype, expr = None):
             self.name = name

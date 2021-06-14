@@ -106,6 +106,7 @@ class Cool_class():
     def get_init_obj_env(self):
         ## TODO: get attris, without initalizer.
         o = {}
+        o["self"] = self.get_name()
         for a in self.get_attris().values():
             o[a.get_name()] = a.get_type()
         return o
@@ -117,7 +118,7 @@ class Cool_class():
         return self.name.get_name()
 
     def add_attris(self, a):
-        if a.get_name() == self:
+        if a.get_name() == "self":
             raise Exception("xx has attri named self")
         if a.get_name() in self.attributes:
             raise Exception("redefinition of attribute: " + a.name)
