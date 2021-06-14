@@ -103,14 +103,21 @@ class Cool_expr():
     def get_type(self, env):
         return self.static_type if self.static_type else self.eval()
 
-    def typeCheck(self, env, inheirtance):
-        raise Exception("eval not overriden")
+    def typeCheck(self, env, inheritance):
+        raise Exception("eval not overriden in " + str(type(self)))
 
     def __str__(self):
         return str(type(self))
         # raise Exception("str not overriden")
 
 class Expr_Assign(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        vtype = env.typeof(self.var)
+        etype = self.expr.typeCheck(env, inheritance)
+        if not inheritance.get_node(etype).is_child(vtype):
+            raise Exception("%s does not conform %s in assign" % (vtype, etype))
+        return etype
+
     def __init__(self, line, var, expr):
         self.var = var
         self.expr = expr
@@ -123,6 +130,7 @@ class Expr_Assign(Cool_expr):
         return "assign\n"
 
 class Expr_DDispatch(Cool_expr):
+
     def __init__(self, line, expr, method, args):
         self.expr = expr
         self.method = method
@@ -159,6 +167,15 @@ class Expr_SelfDispatch(Cool_expr):
         return Expr_SelfDispatch(kwargs["line"], m, args)
 
 class Expr_If(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        predicate_type = self.predicate.typeCheck(env, inheritance)
+        if not predicate_type == "Bool":
+            raise Exception("conditional has type %s instead of bool" % predicate_type)
+        bt_type        = self.bt.typeCheck(env, inheritance)
+        bf_type        = self.bf.typeCheck(env, inheritance)
+
+        return inheritance.lub(bt_type, bf_type)
+
     def __init__(self, line, predicate, bt, bf):
         self.predicate = predicate
         self.bt = bt
@@ -171,6 +188,14 @@ class Expr_If(Cool_expr):
         return Expr_If(kwargs["line"], predicate, bt, bf)
 
 class Expr_While(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        predicate_type = self.predicate.typeCheck(env.copy(), inheritance)
+        if not predicate_type == "Bool":
+            raise Exception("conditional has type %s instead of bool" % predicate_type)
+        self.body.typeCheck(env.copy(), inheritance)
+
+        return "Object"
+
     def __init__(self, line, predicate, body):
         self.predicate = predicate
         self.body = body
@@ -182,6 +207,11 @@ class Expr_While(Cool_expr):
 
 
 class Expr_Block(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        for e in self.exprs:
+            rtype = e.typeCheck(env, inheritance)
+        return rtype
+
     def __init__(self, line, exprs):
         self.exprs = exprs
         super().__init__(line)
@@ -190,6 +220,14 @@ class Expr_Block(Cool_expr):
         return Expr_Block(kwargs["line"], exprs)
 
 class Expr_New(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        tname = self.tname.get_name()
+        if tname == "SELF_TYPE":
+            return env.get_selftype()
+        if not inheritance.has_node(tname):
+            raise Exception("unknown type %s in new" % tname)
+        return tname
+
     def __init__(self, line, tname):
         self.tname = tname
         super().__init__(line)
@@ -198,6 +236,10 @@ class Expr_New(Cool_expr):
         return Expr_New(kwargs["line"], cname)
 
 class Expr_Isvoid(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        self.expr.typeCheck(env, inheritance)
+        return "Bool"
+
     def __init__(self, line, expr):
         self.expr = expr
         super().__init__(line)
@@ -206,6 +248,13 @@ class Expr_Isvoid(Cool_expr):
         return Expr_Isvoid(kwargs["line"], e)
 
 class Expr_Arith(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t1 = self.e1.typeCheck(env, inheritance)
+        t2 = self.e2.typeCheck(env, inheritance)
+        if (not t1 == "Int") or (not t2 == "Int"):
+            raise Exception("%s %s in arith instead of ints" % (t1, t2))
+        return "Int"
+
     def __init__(self, line, op, e1, e2):
         self.e1 = e1
         self.e2 = e2
@@ -217,6 +266,7 @@ class Expr_Arith(Cool_expr):
         return Expr_Arith(kwargs["line"], kwargs["ename"], e1, e2)
 
 class Expr_Cmp(Cool_expr):
+
     def __init__(self, line, op, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
@@ -228,6 +278,12 @@ class Expr_Cmp(Cool_expr):
         return Expr_Cmp(kwargs["line"], kwargs["ename"], lhs, rhs)
 
 class Expr_Not(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t = self.expr.typeCheck(env, inheritance)
+        if not t == "Bool":
+            raise Exception("not applied to %s instead of Bool" % t)
+        return "Bool"
+
     def __init__(self, line, expr):
         self.expr = expr
         super().__init__(line)
@@ -236,6 +292,12 @@ class Expr_Not(Cool_expr):
         return Expr_Not(kwargs["line"], e)
 
 class Expr_Negate(Cool_expr):
+    def typeCheck(self, env, inheritance):
+        t = self.expr.typeCheck(env, inheritance)
+        if not t == "Int":
+            raise Exception("negate applied to %s instead of Bool" % t)
+        return "Int"
+
     def __init__(self, line, expr):
         self.expr = expr
         super().__init__(line)
@@ -244,7 +306,7 @@ class Expr_Negate(Cool_expr):
         return Expr_Negate(kwargs["line"], e)
 
 class Expr_Integer(Cool_expr):
-    def typeCheck(self, env, inheirtance):
+    def typeCheck(self, env, inheritance):
         return "Int"
 
     def __init__(self, line, int_value):
@@ -257,7 +319,7 @@ class Expr_Integer(Cool_expr):
         return "int: " + self.int_value + "\n"
 
 class Expr_String(Cool_expr):
-    def typeCheck(self, env, inheirtance):
+    def typeCheck(self, env, inheritance):
         return "String"
 
     def __init__(self, line, str_value):
@@ -268,7 +330,7 @@ class Expr_String(Cool_expr):
         return Expr_String(kwargs["line"], s)
 
 class Expr_Id(Cool_expr):
-    def typeCheck(self, env, inheirtance):
+    def typeCheck(self, env, inheritance):
         return env.typeof(self.cool_id)
 
     def __init__(self, line, cool_id):
@@ -279,8 +341,9 @@ class Expr_Id(Cool_expr):
         return Expr_Id(kwargs["line"], i)
 
 class Expr_Bool(Cool_expr):
-    def typeCheck(self, env, inheirtance):
+    def typeCheck(self, env, inheritance):
         return "Bool"
+
     def __init__(self, line, bool_value):
         self.bool_value = bool_value
         super().__init__(line)
@@ -334,7 +397,7 @@ class Expr_Case(Cool_expr):
         return Expr_Case(kwargs["line"], expr, elements)
 
 class Expr_Internal(Cool_expr):
-    def typeCheck(self, env, inheirtance):
+    def typeCheck(self, env, inheritance):
         return self.static_type.get_name()
 
     def __init__(self, static_type, details):

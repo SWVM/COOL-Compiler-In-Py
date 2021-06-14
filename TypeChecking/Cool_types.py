@@ -212,11 +212,11 @@ class Cool_attri(Cool_feature):
         declared_type = self.declared_type.get_name()
 
         if not inheritance.has_node(declared_type):
-            raise Exception("class x has attri x with unknown type x")
+            raise Exception("class %s has attri %s with unknown type %s" % (self.owner.get_name(), self.get_name(), declared_type))
 
         if self.init_expr:
             init_type = self.init_expr.typeCheck(env.copy(), inheritance)
-            if not inheritance.is_child(declared_type, init_type):
+            if not inheritance.get_node(init_type).is_child(declared_type):
                 raise Exception("initializer does not conform attri")
 
         return declared_type
@@ -257,7 +257,7 @@ class Cool_method(Cool_feature):
             raise Exception("class %s mehtod %s has unkwnon return type %s" % (self.owner, self.get_name(), rtype))
 
         expr_type     = self.body_expr.typeCheck(env, inheritance)
-        if not inheritance.is_child(declared_type, expr_type):
+        if not inheritance.get_node(expr_type).is_child(declared_type):
             raise Exception("%s does not conform with %s in mehtod %s" % (expr_type, declared_type, self.get_name()))
 
         return declared_type

@@ -25,6 +25,8 @@ class Pedigree():
             self.children.append(c)
         def rm_child(self, c):
             self.children = [n for n in self.children if n is not c]
+        def is_child(self, p):
+            return p in self.path_to_root()
         def path_to_root(self):
             if self.parent == None:
                 return [self.name]
@@ -49,9 +51,6 @@ class Pedigree():
         child  = self.get_node(c)
         parent.add_child(child)
         child.set_parent(parent)
-
-    def is_child(self, a, b):
-        return b in self.get_node(a).path_to_root()
 
     def lub(self, a, b):
         a = self.nodes[a].path_to_root()
