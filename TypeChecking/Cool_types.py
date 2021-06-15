@@ -16,7 +16,7 @@ class Cool_prog():
 
     def add_class(self, c):
         if c.get_name() in self.classes:
-            raise Exception("redefinition of class: " + name.name)
+            raise Exception("redefinition of class: " + c.name.get_name())
         if c.parent: self.inheritance.add_edge(c.parent.get_name(), c.get_name())
         self.classes[c.get_name()] = c
         c.set_prog(self)
@@ -68,11 +68,12 @@ class Cool_class():
         methods = self.get_methods().values()
         env = Typing_env(   o = self.get_init_obj_env(),
                             m = self.prog.get_method_env(),
-                            c = self.get_name())
+                            c = Cool_type(self.get_name()),
+                            inheritance = inheritance)
         for a in attris:
-            a.typeCheck(env.copy(), inheritance)
+            a.typeCheck(env)
         for m in methods:
-            m.typeCheck(env.copy(), inheritance)
+            m.typeCheck(env)
 
     # read a class from .cl-ast file
     def read(fin):
@@ -106,9 +107,9 @@ class Cool_class():
     def get_init_obj_env(self):
         ## TODO: get attris, without initalizer.
         o = {}
-        o["self"] = self.get_name()
+        o["self"] = Cool_type(self.get_name())
         for a in self.get_attris().values():
-            o[a.get_name()] = a.get_type()
+            o[a.get_name()] = Cool_type(a.get_type())
         return o
 
     def set_prog(self, prog):
@@ -199,7 +200,7 @@ class Cool_feature():
         self.declared_type = declared_type
         self.owner = owner
 
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         raise Exception("to be override")
 
     def get_name(self):
@@ -209,15 +210,15 @@ class Cool_feature():
 
 
 class Cool_attri(Cool_feature):
-    def typeCheck(self, env, inheritance):
-        declared_type = self.declared_type.get_name()
+    def typeCheck(self, env):
+        declared_type = Cool_type(self.declared_type.get_name())
 
-        if not inheritance.has_node(declared_type):
+        if not env.has_type(declared_type):
             raise Exception("class %s has attri %s with unknown type %s" % (self.owner.get_name(), self.get_name(), declared_type))
 
         if self.init_expr:
-            init_type = self.init_expr.typeCheck(env.copy(), inheritance)
-            if not inheritance.get_node(init_type).is_child(declared_type):
+            init_type = self.init_expr.typeCheck(env)
+            if not env.is_parent_child(declared_type, init_type):
                 raise Exception("initializer does not conform attri")
 
         return declared_type
@@ -235,39 +236,38 @@ class Cool_attri(Cool_feature):
 
 
 class Cool_method(Cool_feature):
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         # TODO: WHERE YOU LEFT
-        declared_type = self.declared_type.get_name()
         env = env.copy()
         formal_vars = {}
         for f in self.formals:
             fname = f.get_name()
-            ftype = f.get_type()
+            ftype = Cool_type(f.get_type())
             if fname == "self":
                 raise Exception("class %s method %s has formal named self" % (self.owner, self.get_name()))
-            if not inheritance.has_node(ftype):
-                raise Exception("class %s method %s has unknwon return type %s" % (self.owner, self.get_name(),ftype))
+            if not env.has_type(ftype):
+                raise Exception("class %s method %s has unknwon formal type %s" % (self.owner, self.get_name(),ftype))
             if fname in formal_vars:
                 raise Exception("class %s method %s with duplicated formal parameters named %s" % (self.owner, self.get_name(),fname))
             formal_vars[fname] = ftype
         env.add_vars(formal_vars)
-        rtype = self.declared_type.get_name()
+        rtype = Cool_type(self.declared_type.get_name())
         if rtype == "SELF_TYPE":
             rtype = env.get_selftype()
-        if not inheritance.has_node(rtype):
+        if not env.has_type(rtype):
             raise Exception("class %s mehtod %s has unkwnon return type %s" % (self.owner, self.get_name(), rtype))
 
-        expr_type     = self.body_expr.typeCheck(env, inheritance)
-        if not inheritance.get_node(expr_type).is_child(declared_type):
-            raise Exception("%s does not conform with %s in mehtod %s" % (expr_type, declared_type, self.get_name()))
+        expr_type     = self.body_expr.typeCheck(env)
+        if not env.is_parent_child(rtype, expr_type):
+            raise Exception("%s does not conform with %s in mehtod %s" % (expr_type, rtype, self.get_name()))
 
-        return declared_type
+        return rtype
 
     def __init__(self, name, formals, declared_type, body_expr, owner):
         self.formals = formals
         self.declared_type = declared_type
-        self.signiture = list(map(lambda x: x.get_type(), self.formals))
-        self.return_type   = declared_type.get_name()
+        self.signiture = list(map(lambda x: Cool_type(x.get_type()), self.formals))
+        self.return_type   = Cool_type(declared_type.get_name())
         self.body_expr = body_expr
         super().__init__(name, declared_type, owner)
 
@@ -306,21 +306,21 @@ class Cool_formal():
 M_abort = Cool_method(  Cool_Id("abort","0"),
                         [],
                         Cool_Id("Object","0"),
-                        Expr_Internal(  Cool_Id("Object",0),
+                        Expr_Internal(  "Object",
                                         "Object.abort"),
                         "Object"
 )
 M_copy = Cool_method(  Cool_Id("copy","0"),
                         [],
                         Cool_Id("SELF_TYPE","0"),
-                        Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                        Expr_Internal(  "SELF_TYPE",
                                         "Object.copy"),
                         "Object"
 )
 M_type_name = Cool_method(  Cool_Id("type_name","0"),
                         [],
                         Cool_Id("String","0"),
-                        Expr_Internal(  Cool_Id("String",0),
+                        Expr_Internal(  "String",
                                         "Object.type_name"),
                         "Object"
 )
@@ -331,7 +331,7 @@ M_out_string = Cool_method(  Cool_Id("out_string","0"),
                                 Cool_formal( Cool_Id("x", "0"), Cool_Id("String", "0"))
                              ],
                              Cool_Id("SELF_TYPE","0"),
-                             Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                             Expr_Internal(  "SELF_TYPE",
                                             "IO.out_string"),
                             "IO"
 )
@@ -340,21 +340,21 @@ M_out_int    = Cool_method(  Cool_Id("out_int","0"),
                                 Cool_formal( Cool_Id("x", "0"), Cool_Id("Int", "0"))
                              ],
                              Cool_Id("SELF_TYPE","0"),
-                             Expr_Internal(  Cool_Id("SELF_TYPE",0),
+                             Expr_Internal(  "SELF_TYPE",
                                             "IO.out_int"),
                             "IO"
 )
 M_in_string  = Cool_method(  Cool_Id("in_string","0"),
                              [],
                              Cool_Id("String","0"),
-                             Expr_Internal(  Cool_Id("String",0),
+                             Expr_Internal(  "String",
                                             "IO.in_string"),
                             "IO"
 )
 M_in_int     = Cool_method(  Cool_Id("in_int","0"),
                              [],
                              Cool_Id("Int","0"),
-                             Expr_Internal(  Cool_Id("Int",0),
+                             Expr_Internal(  "Int",
                                             "IO.in_int"),
                             "IO"
 )
@@ -369,7 +369,7 @@ INT = Cool_class(   Cool_Id("Int","0"),
 M_length    = Cool_method(  Cool_Id("length","0"),
                              [],
                              Cool_Id("Int","0"),
-                             Expr_Internal(  Cool_Id("Int",0),
+                             Expr_Internal(  "Int",
                                             "String.length"),
                             "String"
 )
@@ -378,7 +378,7 @@ M_concat    = Cool_method(  Cool_Id("concat","0"),
                                 Cool_formal( Cool_Id("s", "0"), Cool_Id("String", "0"))
                              ],
                              Cool_Id("String","0"),
-                             Expr_Internal(  Cool_Id("String",0),
+                             Expr_Internal(  "String",
                                             "String.concat"),
                             "String"
 )
@@ -388,7 +388,7 @@ M_substr    = Cool_method(  Cool_Id("substr","0"),
                                 Cool_formal( Cool_Id("l", "0"), Cool_Id("Int", "0"))
                              ],
                              Cool_Id("String","0"),
-                             Expr_Internal(  Cool_Id("String",0),
+                             Expr_Internal(  "String",
                                             "String.substr"),
                             "String"
 )

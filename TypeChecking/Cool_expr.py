@@ -22,56 +22,70 @@ class Cool_type():
         self.tname = tname
         self.selftype = selftype
 
+    def tostr(self):
+        return self.tname
+
     def __eq__(self, other):
-        return self.tname == other.tname
+        if isinstance(other, str):
+            return other == self.tname
+        else:
+            return self.tname == other.tname
 
     def __str__(self):
         if self.selftype:
             return "SELF_TYPE(%s)" % self.tname
         else:
             return self.tname
+    def __repr__(self):
+        return self.__str__()
+
+    def __hash__(self):
+        return hash(self.tname)
 
 
 class Typing_env():
-    def __init__(self, o = None, m = None, c = None, do_debug = False):
+    def __init__(self, o = None, m = None, c = None, inheritance = None):
         self.o = o
         self.m = m
         self.c = c
-        self.do_debug = do_debug
+        self.inheritance = inheritance
     def debug(self):
         print(self.o)
         print(self.m)
         print(self.c)
-    def clear(self):
-        self.__init__(debug == self.debug)
     def copy(self):
-        return deepcopy(self)
-    def add_method(self, method):
-        pass
-    def add_var(self, var):
-        pass
+        return Typing_env(  o = copy(self.o),
+                            m = self.m,
+                            c = self.c,
+                            inheritance = self.inheritance)
+    def add_var(self, var, type):
+        self.o[var] = type
     def add_vars(self, vars):
         self.o.update(vars)
-    def set_class(self, cname):
-        pass
     def get_selftype(self):
         return self.c
     def get_method_signiture(self, c, m):
         if not (c, m) in self.m:
-            raise Exception("unbound method %s" % (var_name))
+            raise Exception("ERROR: %s: Type-Check: unbound method %s" % (m.line, var_name))
         return self.m[(c,m)].signiture
     def get_method_return(self, c, m):
         if not (c, m) in self.m:
-            raise Exception("unbound method %s" % (var_name))
+            raise Exception("ERROR: %s: Type-Check: unbound method %s" % (m.line, var_name))
         return self.m[(c,m)].return_type
     def typeof(self, cid):
         var_name = cid.get_name()
         if not var_name in self.o:
-            raise Exception("unbound identifier %s" % (var_name))
+            raise Exception("ERROR: %s: Type-Check: unbound identifier %s" % (cid.line, var_name))
         return self.o[var_name]
-class Cool_expr():
-    INHERITANCE_GRAPH = None
+    def has_type(self, t):
+        return self.inheritance.has_node(t.tostr())
+    def is_parent_child(self, p, c):
+        return self.inheritance.get_node(c.tostr()).has_parent(p)
+    def lub(self, a, b):
+        return Cool_type(self.inheritance.lub(a.tostr(), b.tostr()))
 
+
+class Cool_expr():
     # factory class
     def read(fin):
         kwargs = {}  # holds extra details for sub classes
@@ -97,7 +111,9 @@ class Cool_expr():
             return Expr_Isvoid.read(fin, **kwargs)
         elif kwargs["ename"] in ["plus","minus","times","divide"]:
             return Expr_Arith.read(fin, **kwargs)
-        elif kwargs["ename"] in ["lt","le","eq"]:
+        elif kwargs["ename"] == "eq":
+            return Expr_Equal.read(fin, **kwargs)
+        elif kwargs["ename"] in ["lt","le"]:
             return Expr_Cmp.read(fin, **kwargs)
         elif kwargs["ename"] == "not":
             return Expr_Not.read(fin, **kwargs)
@@ -118,14 +134,13 @@ class Cool_expr():
         else:
             raise Exception("expr not yet implemented: "+ kwargs["ename"])
 
-    def __init__(self, line, static_type = None):
-        self.static_type = static_type
+    def __init__(self, line):
         self.line   = line
 
     def get_type(self, env):
         return self.static_type if self.static_type else self.eval()
 
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         raise Exception("eval not overriden in " + str(type(self)))
 
     def __str__(self):
@@ -133,11 +148,11 @@ class Cool_expr():
         # raise Exception("str not overriden")
 
 class Expr_Assign(Cool_expr):
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         vtype = env.typeof(self.var)
-        etype = self.expr.typeCheck(env, inheritance)
-        if not inheritance.get_node(etype).is_child(vtype):
-            raise Exception("%s does not conform %s in assign" % (vtype, etype))
+        etype = self.expr.typeCheck(env)
+        if not env.is_parent_child(vtype, etype):
+            raise Exception("ERROR: %s: Type-Check: %s does not conform %s in assign" % (self.line, vtype, etype))
         return etype
 
     def __init__(self, line, var, expr):
@@ -152,16 +167,17 @@ class Expr_Assign(Cool_expr):
         return "assign\n"
 
 class Expr_DDispatch(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t0 = self.expr.typeCheck(env, inheritance)
-        mname = self.method.get_name()
+    def typeCheck(self, env):
+        t0 = self.expr.typeCheck(env)
+        mname = self.method
         signiture = env.get_method_signiture(t0, mname)
-        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        arguments = list(map(lambda x: x.typeCheck(env), self.args))
         if not len(signiture) == len(arguments):
-            raise Exception("wrong number of acttualy arguments")
+            raise Exception("ERROR: %s: Type-Check: wrong number of acttualy arguments" % self.line)
         for i in range(len(signiture)):
-            if not signiture[i] == arguments[i]:
-                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+            if not env.is_parent_child(signiture[i], arguments[i]):
+                print(self.line)
+                raise Exception("ERROR: %s: Type-Check: argument %d type %s does not conform %s in formal type %s" % (self.line, i, arguments[i], signiture[i], mname))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
             rtype = env.get_selftype()
@@ -179,19 +195,19 @@ class Expr_DDispatch(Cool_expr):
         return Expr_DDispatch(kwargs["line"], e, m ,args)
 
 class Expr_SDispatch(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t0 = self.expr.typeCheck(env, inheritance)
-        t  = self.target.get_name()
-        if not inheritance.get_node(t0).is_child(t):
-            raise Exception("%s does not conform to %s in static static dispatch" % (t0, t))
-        mname = self.method.get_name()
+    def typeCheck(self, env):
+        t0 = self.expr.typeCheck(env)
+        t  = Cool_type(self.target.get_name())
+        if not env.is_parent_child(t, t0):
+            raise Exception("ERROR: %s: Type-Check: %s does not conform to %s in static dispatch" % (self.line, t0, t))
+        mname = self.method
         signiture = env.get_method_signiture(t, mname)
-        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        arguments = list(map(lambda x: x.typeCheck(env), self.args))
         if not len(signiture) == len(arguments):
-            raise Exception("wrong number of acttualy arguments")
+            raise Exception("ERROR: %s: Type-Check: wrong number of acttualy arguments "% self.line)
         for i in range(len(signiture)):
-            if not signiture[i] == arguments[i]:
-                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+            if not arguments[i] == signiture[i]:
+                raise Exception("ERROR: %s: Type-Check: argument %d type %s does not conform in formal type %s" % (self.line, i, arguments[i], signiture[i]))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
             rtype = env.get_selftype()
@@ -211,16 +227,16 @@ class Expr_SDispatch(Cool_expr):
         return Expr_SDispatch(kwargs["line"], e, t, m, args)
 
 class Expr_SelfDispatch(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t0 = env.get_selftype()
-        mname = self.method.get_name()
+    def typeCheck(self, env):
+        t0 = env.typeof(Cool_Id("self", 0))
+        mname = self.method
         signiture = env.get_method_signiture(t0, mname)
-        arguments = list(map(lambda x: x.typeCheck(env, inheritance), self.args))
+        arguments = list(map(lambda x: x.typeCheck(env), self.args))
         if not len(signiture) == len(arguments):
-            raise Exception("wrong number of acttualy arguments")
+            raise Exception("ERROR: %s: Type-Check: wrong number of acttualy arguments" % self.line)
         for i in range(len(signiture)):
-            if not signiture[i] == arguments[i]:
-                raise Exception("argument %d type %s does not conform in formal type %s" % (i, arguments[i], signiture[i]))
+            if not arguments[i] == signiture[i]:
+                raise Exception("ERROR: %s: Type-Check: argument %d type %s does not conform in formal type %s" % (self.line, i, arguments[i], signiture[i]))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
             rtype = env.get_selftype()
@@ -236,14 +252,14 @@ class Expr_SelfDispatch(Cool_expr):
         return Expr_SelfDispatch(kwargs["line"], m, args)
 
 class Expr_If(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        predicate_type = self.predicate.typeCheck(env, inheritance)
+    def typeCheck(self, env):
+        predicate_type = self.predicate.typeCheck(env)
         if not predicate_type == "Bool":
             raise Exception("conditional has type %s instead of bool" % predicate_type)
-        bt_type        = self.bt.typeCheck(env, inheritance)
-        bf_type        = self.bf.typeCheck(env, inheritance)
+        bt_type        = self.bt.typeCheck(env)
+        bf_type        = self.bf.typeCheck(env)
 
-        return inheritance.lub(bt_type, bf_type)
+        return env.lub(bt_type, bf_type)
 
     def __init__(self, line, predicate, bt, bf):
         self.predicate = predicate
@@ -257,13 +273,13 @@ class Expr_If(Cool_expr):
         return Expr_If(kwargs["line"], predicate, bt, bf)
 
 class Expr_While(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        predicate_type = self.predicate.typeCheck(env, inheritance)
+    def typeCheck(self, env):
+        predicate_type = self.predicate.typeCheck(env)
         if not predicate_type == "Bool":
             raise Exception("conditional has type %s instead of bool" % predicate_type)
-        self.body.typeCheck(env, inheritance)
+        self.body.typeCheck(env)
 
-        return "Object"
+        return Cool_type("Object")
 
     def __init__(self, line, predicate, body):
         self.predicate = predicate
@@ -276,9 +292,9 @@ class Expr_While(Cool_expr):
 
 
 class Expr_Block(Cool_expr):
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         for e in self.exprs:
-            rtype = e.typeCheck(env, inheritance)
+            rtype = e.typeCheck(env)
         return rtype
 
     def __init__(self, line, exprs):
@@ -289,13 +305,13 @@ class Expr_Block(Cool_expr):
         return Expr_Block(kwargs["line"], exprs)
 
 class Expr_New(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        tname = self.tname.get_name()
-        if tname == "SELF_TYPE":
-            return env.get_selftype()
-        if not inheritance.has_node(tname):
+    def typeCheck(self, env):
+        t = Cool_type(self.tname.get_name())
+        if t == "SELF_TYPE":
+            t = env.get_selftype()
+        elif not env.has_type(t):
             raise Exception("unknown type %s in new" % tname)
-        return tname
+        return t
 
     def __init__(self, line, tname):
         self.tname = tname
@@ -305,9 +321,9 @@ class Expr_New(Cool_expr):
         return Expr_New(kwargs["line"], cname)
 
 class Expr_Isvoid(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        self.expr.typeCheck(env, inheritance)
-        return "Bool"
+    def typeCheck(self, env):
+        self.expr.typeCheck(env)
+        return Cool_type("Bool")
 
     def __init__(self, line, expr):
         self.expr = expr
@@ -317,12 +333,12 @@ class Expr_Isvoid(Cool_expr):
         return Expr_Isvoid(kwargs["line"], e)
 
 class Expr_Arith(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t1 = self.e1.typeCheck(env, inheritance)
-        t2 = self.e2.typeCheck(env, inheritance)
+    def typeCheck(self, env):
+        t1 = self.e1.typeCheck(env)
+        t2 = self.e2.typeCheck(env)
         if (not t1 == "Int") or (not t2 == "Int"):
             raise Exception("%s %s in arith instead of ints" % (t1, t2))
-        return "Int"
+        return Cool_type("Int")
 
     def __init__(self, line, op, e1, e2):
         self.e1 = e1
@@ -334,7 +350,32 @@ class Expr_Arith(Cool_expr):
         e2 = Cool_expr.read(fin)
         return Expr_Arith(kwargs["line"], kwargs["ename"], e1, e2)
 
+class Expr_Equal(Cool_expr):
+    def typeCheck(self, env):
+        t1 = self.lhs.typeCheck(env)
+        t2 = self.rhs.typeCheck(env)
+        if  (t1 in ["Int", "String", "Bool"] or \
+            t2 in ["Int", "String", "Bool"]) and \
+                t1 != t2:
+            raise Exception("equal on %s %s" % (t1, t2))
+        return Cool_type("Bool")
+    def __init__(self, line, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+        super().__init__(line)
+    def read(fin, **kwargs):
+        lhs = Cool_expr.read(fin)
+        rhs = Cool_expr.read(fin)
+        return Expr_Equal(kwargs["line"], lhs, rhs)
+
+
 class Expr_Cmp(Cool_expr):
+    def typeCheck(self, env):
+        t1 = self.lhs.typeCheck(env)
+        t2 = self.rhs.typeCheck(env)
+        if not (t1 == "Int" and t2 == "Int"):
+            raise Exception("cmp on %s %s" % (t1, t2))
+        return Cool_type("Bool")
 
     def __init__(self, line, op, lhs, rhs):
         self.lhs = lhs
@@ -347,11 +388,11 @@ class Expr_Cmp(Cool_expr):
         return Expr_Cmp(kwargs["line"], kwargs["ename"], lhs, rhs)
 
 class Expr_Not(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t = self.expr.typeCheck(env, inheritance)
+    def typeCheck(self, env):
+        t = self.expr.typeCheck(env)
         if not t == "Bool":
             raise Exception("not applied to %s instead of Bool" % t)
-        return "Bool"
+        return Cool_type("Bool")
 
     def __init__(self, line, expr):
         self.expr = expr
@@ -361,11 +402,11 @@ class Expr_Not(Cool_expr):
         return Expr_Not(kwargs["line"], e)
 
 class Expr_Negate(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        t = self.expr.typeCheck(env, inheritance)
+    def typeCheck(self, env):
+        t = self.expr.typeCheck(env)
         if not t == "Int":
             raise Exception("negate applied to %s instead of Bool" % t)
-        return "Int"
+        return Cool_type("Int")
 
     def __init__(self, line, expr):
         self.expr = expr
@@ -375,8 +416,8 @@ class Expr_Negate(Cool_expr):
         return Expr_Negate(kwargs["line"], e)
 
 class Expr_Integer(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        return "Int"
+    def typeCheck(self, env):
+        return Cool_type("Int")
 
     def __init__(self, line, int_value):
         self.int_value = int_value
@@ -388,8 +429,8 @@ class Expr_Integer(Cool_expr):
         return "int: " + self.int_value + "\n"
 
 class Expr_String(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        return "String"
+    def typeCheck(self, env):
+        return Cool_type("String")
 
     def __init__(self, line, str_value):
         self.str_value = str_value
@@ -399,7 +440,7 @@ class Expr_String(Cool_expr):
         return Expr_String(kwargs["line"], s)
 
 class Expr_Id(Cool_expr):
-    def typeCheck(self, env, inheritance):
+    def typeCheck(self, env):
         return env.typeof(self.cool_id)
 
     def __init__(self, line, cool_id):
@@ -410,8 +451,8 @@ class Expr_Id(Cool_expr):
         return Expr_Id(kwargs["line"], i)
 
 class Expr_Bool(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        return "Bool"
+    def typeCheck(self, env):
+        return Cool_type("Bool")
 
     def __init__(self, line, bool_value):
         self.bool_value = bool_value
@@ -420,7 +461,23 @@ class Expr_Bool(Cool_expr):
         return Expr_Bool(kwargs["line"], kwargs["ename"])
 
 class Expr_Let(Cool_expr):
-
+    def typeCheck(self, env):
+        env = env.copy()
+        o = {}
+        for b in self.bindings:
+            bname, btype, expr = (b.get_name(), Cool_type(b.get_type()), b.get_expr())
+            if bname == "self":
+                raise Exception("binding self in a let is not good")
+            if btype == "SELF_TYPE":
+                btype = env.get_selftype()
+            if not env.has_type(btype):
+                raise Exception("unbound type in let")
+            if expr:
+                etype = expr.typeCheck(env)
+                if not env.is_parent_child(btype, etype):
+                    raise Exception("type %s does not conform %s in let bingindg" % (etype, btype))
+            env.add_var(bname, btype)
+        return self.body.typeCheck(env)
 
     class Binding():
         def __init__(self, name, btype, expr = None):
@@ -431,12 +488,18 @@ class Expr_Let(Cool_expr):
             init = fin.readline()[:-1]
             name = Cool_Id.read(fin)
             btype= Cool_Id.read(fin)
-            if init == "let_binding_no_init ":
+            if init == "let_binding_no_init":
                 init = None
             elif init == "let_binding_init":
                 init = Cool_expr.read(fin)
                 # LET error line number
             return Expr_Let.Binding(name, btype, init)
+        def get_name(self):
+            return self.name.get_name()
+        def get_type(self):
+            return self.btype.get_name()
+        def get_expr(self):
+            return self.expr
 
     def __init__(self, line, bindings, body):
         self.bindings = bindings
@@ -448,7 +511,23 @@ class Expr_Let(Cool_expr):
         return Expr_Let(kwargs["line"], bindings, body)
 
 class Expr_Case(Cool_expr):
+    def typeCheck(self, env):
+        self.expr.typeCheck(env)
+        types = map(lambda x: x.typeCheck(env), self.elements)
+        return reduce(lambda a,b: env.lub(a,b), types)
+
     class CaseElement(Cool_expr):
+        def typeCheck(self, env):
+            env = env.copy()
+            vname = self.name.get_name()
+            vtype = self.ctype.get_name()
+            expr  = self.expr
+            if vname == "self":
+                raise Exception("self binding in case badbad")
+            if vtype == "SELF_TYPE":
+                raise Exception("using SELF_TYPE in case badbad")
+            env.add_var(vname, Cool_type(vtype))
+            return expr.typeCheck(env)
         def __init__(self, name, ctype, expr):
             self.name = name
             self.btype= btype
@@ -468,9 +547,13 @@ class Expr_Case(Cool_expr):
         return Expr_Case(kwargs["line"], expr, elements)
 
 class Expr_Internal(Cool_expr):
-    def typeCheck(self, env, inheritance):
-        return self.static_type.get_name()
+    def typeCheck(self, env):
+        if self.static_type == "SELF_TYPE":
+            return env.get_selftype()
+        else:
+            return self.static_type
 
     def __init__(self, static_type, details):
         self.details = details
-        super().__init__(0, static_type = static_type)
+        self.static_type = Cool_type(static_type)
+        super().__init__(0)

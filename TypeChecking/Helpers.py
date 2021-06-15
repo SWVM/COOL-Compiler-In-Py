@@ -25,7 +25,7 @@ class Pedigree():
             self.children.append(c)
         def rm_child(self, c):
             self.children = [n for n in self.children if n is not c]
-        def is_child(self, p):
+        def has_parent(self,p):
             return p in self.path_to_root()
         def path_to_root(self):
             if self.parent == None:

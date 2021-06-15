@@ -1,12 +1,11 @@
-class A inherits Main{
-  aa(ss:Int):Main { {while true loop 0 pool;self@Main.self(1);"";new Main;}};
-};
+class Main {
+  main( ) : Object { 5 } ;
+} ;
 
-class Main{
-  tes:Int;
-  self(ss:Int):Fu { {while true loop 0 pool;new Main.self();"";new Main;}};
-  main():Int{0};
-};
-class B inherits Main{
+class Bad {
+  x() : Int { 5 };
+} ;
 
-};
+class Bad {
+  y() : Int { 5 };
+} ;
