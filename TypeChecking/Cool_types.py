@@ -34,6 +34,7 @@ class Cool_prog():
         if cycle:
             error(  "0",
                     "inheritance cycle: %s" % (cycle))
+        self.check_main()
 
         for c in self.classes.values():
             c.typeCheck(self.inheritance)
