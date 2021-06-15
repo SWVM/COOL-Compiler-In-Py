@@ -7,6 +7,9 @@ def read_lst(func, fin, args=[]):
         lst.append(func(fin, *args))
     return lst
 
+def error(line, message):
+    print("ERROR: %s: Type-Check: %s" % (line, message))
+    exit(1)
 class Pedigree():
     class Node():
         def __init__(self, name):

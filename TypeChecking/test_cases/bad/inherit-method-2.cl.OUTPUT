@@ -1,0 +1,1 @@
+ERROR: 8: Type-Check: class Bad redefines method foo and changes return type (from Int to String)

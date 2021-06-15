@@ -1,11 +1,9 @@
 class Main {
-  main( ) : Object { 5 } ;
-} ;
-
-class Bad {
-  x() : Int { 5 };
-} ;
-
-class Bad {
-  y() : Int { 5 };
+  a:Int;
+  tt(a:Int):Int {0};
+  main( ) : Int {case
+  0
+  of
+  ss:
+  SELF_TYPE=>0;esac};
 } ;
