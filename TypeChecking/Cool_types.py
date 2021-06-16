@@ -23,6 +23,15 @@ class Cool_prog():
         self.classes[c.get_name()] = c
         c.set_prog(self)
 
+
+    def tc_class_map(self):
+        for c in self.classes.values():
+            c.tc_attris(self.inheritance)
+
+    def tc_imp_map(self):
+        for c in self.classes.values():
+            c.tc_methods(self.inheritance)
+
     def fetch_class(self, cname):
         try:
             return self.classes[cname.name]
@@ -54,7 +63,7 @@ class Cool_prog():
             error(  "0",
                     "class Main not found")
         try:
-            method_main= class_Main.get_methods["main"]
+            method_main= class_Main.get_methods()["main"]
         except:
             error(  "0",
                     "class Main method main not found")
@@ -69,6 +78,26 @@ class Cool_class():
     DEFAULT_PARENT = Cool_Id("Object", "0")
     NON_INHERITABLE = ["Int", "Bool", "String"]
 
+    def get_init_env(self, inheritance):
+        return   Typing_env(o = self.get_init_obj_env(),
+                            m = self.prog.get_method_env(),
+                            c = Cool_type(self.get_name(), selftype = True),
+                            inheritance = inheritance)
+
+    def tc_methods(self, inheritance):
+        methods = self.get_methods().values()
+        env     = self.get_init_env(inheritance)
+        for m in methods:
+            m.typeCheck(env)
+            print(m.body_expr)
+
+    def tc_attris(self, inheritance):
+        attris = self.get_attris().values()
+        env     = self.get_init_env(inheritance)
+        for a in attris:
+            a.typeCheck(env)
+            print(a.init_expr)
+
     def typeCheck(self, inheritance):
         # care about yourself
         attris = self.get_attris().values()
@@ -79,8 +108,10 @@ class Cool_class():
                             inheritance = inheritance)
         for a in attris:
             a.typeCheck(env)
+            print(a.init_expr)
         for m in methods:
             m.typeCheck(env)
+            print(m.body_expr)
 
     # read a class from .cl-ast file
     def read(fin):
@@ -237,12 +268,11 @@ class Cool_attri(Cool_feature):
                     % (self.owner, self.name, declared_type))
 
         if self.init_expr:
-            init_type = self.init_expr.typeCheck(env)
+            init_type = self.init_expr.tc(env)
             if not env.is_parent_child(declared_type, init_type):
                 error(  self.get_line(),
                         "%s does not conform to %s in initialized attribute"
                         % (init_type, declared_type))
-
         return declared_type
 
     def __init__(self, name, declared_type, owner, init_expr = None):
@@ -286,7 +316,7 @@ class Cool_method(Cool_feature):
             error(  self.declared_type.get_line(),
                     "class %s has method %s with unknown return type %s"
                     % (self.owner, self.name, rtype))
-        expr_type     = self.body_expr.typeCheck(env)
+        expr_type     = self.body_expr.tc(env)
         if not env.is_parent_child(rtype, expr_type):
             error(  self.get_line(),
                     "%s does not conform to %s in method %s"

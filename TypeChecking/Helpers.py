@@ -7,6 +7,10 @@ def read_lst(func, fin, args=[]):
         lst.append(func(fin, *args))
     return lst
 
+def elst_to_str(elst):
+    return "%d\n%s" % (len(elst), ''.join(elst))
+
+
 def error(line, message):
     print("ERROR: %s: Type-Check: %s" % (line, message))
     exit(1)

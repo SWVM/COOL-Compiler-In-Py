@@ -146,19 +146,23 @@ class Cool_expr():
     def __init__(self, line):
         self.line   = line
 
-    def get_type(self, env):
-        return self.static_type if self.static_type else self.eval()
+    def tc(self, env):
+        self.flush_types(env)
+        return self.static_type
 
-    def typeCheck(self, env):
-        raise Exception("eval not overriden in " + str(type(self)))
+    def flush_types(self, env):
+        self.static_type = self.typeCheck(env)
+        return self.static_type
 
     def __str__(self):
-        return str(type(self))
+        return "%s\n%s\n%s" % (self.line, self.static_type, self.tostr())
+    def tostr(self):
+        raise Exception("TOSTR IS NOT OVERIDDEN IN CLASS: " + str(type(self)))
 
 class Expr_Assign(Cool_expr):
     def typeCheck(self, env):
         vtype = env.typeof(self.var)
-        etype = self.expr.typeCheck(env)
+        etype = self.expr.flush_types(env)
         if not env.is_parent_child(vtype, etype):
             error(  self.line,
                     "%s does not conform %s in assignment"
@@ -173,15 +177,15 @@ class Expr_Assign(Cool_expr):
         var = Cool_Id.read(fin)
         expr= Cool_expr.read(fin)
         return Expr_Assign(kwargs["line"], var, expr)
-    def __str__(self):
-        return "assign\n"
+    def tostr(self):
+        return "assign\n%s%s" % (self.var, self.expr)
 
 class Expr_DDispatch(Cool_expr):
     def typeCheck(self, env):
-        t0 = self.expr.typeCheck(env)
+        t0 = self.expr.flush_types(env)
         mname = self.method
         signiture = env.get_method_signiture(t0, mname)
-        arguments = list(map(lambda x: x.typeCheck(env), self.args))
+        arguments = list(map(lambda x: x.flush_types(env), self.args))
         if not len(signiture) == len(arguments):
             error(  self.line,
                     "wrong number of actual arguments (%d vs. %d)"
@@ -206,10 +210,12 @@ class Expr_DDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_DDispatch(kwargs["line"], e, m ,args)
+    def tostr(self):
+        return "dynamic_dispatch\n%s%s%s" % (self.expr, self.method, elst_to_str(self.args))
 
 class Expr_SDispatch(Cool_expr):
     def typeCheck(self, env):
-        t0 = self.expr.typeCheck(env)
+        t0 = self.expr.flush_types(env)
         t  = Cool_type(self.target.get_name())
         if not env.is_parent_child(t, t0):
             error(  self.line,
@@ -217,7 +223,7 @@ class Expr_SDispatch(Cool_expr):
                     % (t0, t))
         mname = self.method
         signiture = env.get_method_signiture(t, mname)
-        arguments = list(map(lambda x: x.typeCheck(env), self.args))
+        arguments = list(map(lambda x: x.flush_types(env), self.args))
         if not len(signiture) == len(arguments):
             error(  self.line,
                     "wrong number of actual arguments (%d vs. %d)"
@@ -244,13 +250,15 @@ class Expr_SDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_SDispatch(kwargs["line"], e, t, m, args)
+    def tostr(self):
+        return "static_dispatch\n%s%s%s%s" % (self.expr, self.target, self.method, elst_to_str(self.args))
 
 class Expr_SelfDispatch(Cool_expr):
     def typeCheck(self, env):
         t0 = env.typeof(Cool_Id("self", 0))
         mname = self.method
         signiture = env.get_method_signiture(t0, mname)
-        arguments = list(map(lambda x: x.typeCheck(env), self.args))
+        arguments = list(map(lambda x: x.flush_types(env), self.args))
         if not len(signiture) == len(arguments):
             error(  self.line,
                     "wrong number of actual arguments (%d vs. %d)"
@@ -273,16 +281,18 @@ class Expr_SelfDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_SelfDispatch(kwargs["line"], m, args)
+    def tostr(self):
+        return "self_dispatch\n%s%s" % (self.method, elst_to_str(self.args))
 
 class Expr_If(Cool_expr):
     def typeCheck(self, env):
-        predicate_type = self.predicate.typeCheck(env)
+        predicate_type = self.predicate.flush_types(env)
         if not predicate_type == "Bool":
             error(  self.predicate.line,
                     "conditional has type %s instead of Bool"
                     % (predicate_type))
-        bt_type        = self.bt.typeCheck(env)
-        bf_type        = self.bf.typeCheck(env)
+        bt_type        = self.bt.flush_types(env)
+        bf_type        = self.bf.flush_types(env)
 
         return env.lub(bt_type, bf_type)
 
@@ -296,15 +306,17 @@ class Expr_If(Cool_expr):
         bt        = Cool_expr.read(fin)
         bf        = Cool_expr.read(fin)
         return Expr_If(kwargs["line"], predicate, bt, bf)
+    def tostr(self):
+        return "if\n%s%s%s" % (self.predicate, self.bt, self.bf)
 
 class Expr_While(Cool_expr):
     def typeCheck(self, env):
-        predicate_type = self.predicate.typeCheck(env)
+        predicate_type = self.predicate.flush_types(env)
         if not predicate_type == "Bool":
             error(  self.predicate.line,
                     "conditional has type %s instead of Bool"
                     % (predicate_type))
-        self.body.typeCheck(env)
+        self.body.flush_types(env)
 
         return Cool_type("Object")
 
@@ -316,12 +328,14 @@ class Expr_While(Cool_expr):
         predicate = Cool_expr.read(fin)
         body      = Cool_expr.read(fin)
         return Expr_While(kwargs["line"], predicate, body)
+    def tostr(self):
+        return "while\n%s%s" % (self.predicate, self.body)
 
 
 class Expr_Block(Cool_expr):
     def typeCheck(self, env):
         for e in self.exprs:
-            rtype = e.typeCheck(env)
+            rtype = e.flush_types(env)
         return rtype
 
     def __init__(self, line, exprs):
@@ -330,6 +344,8 @@ class Expr_Block(Cool_expr):
     def read(fin, **kwargs):
         exprs = read_lst(Cool_expr.read, fin)
         return Expr_Block(kwargs["line"], exprs)
+    def tostr(self):
+        return "block\n%s" % (elst_to_str(self.exprs))
 
 class Expr_New(Cool_expr):
     def typeCheck(self, env):
@@ -348,10 +364,12 @@ class Expr_New(Cool_expr):
     def read(fin, **kwargs):
         cname = Cool_Id.read(fin)
         return Expr_New(kwargs["line"], cname)
+    def tostr(self):
+        return "new\n%s" % (self.tname)
 
 class Expr_Isvoid(Cool_expr):
     def typeCheck(self, env):
-        self.expr.typeCheck(env)
+        self.expr.flush_types(env)
         return Cool_type("Bool")
 
     def __init__(self, line, expr):
@@ -363,8 +381,8 @@ class Expr_Isvoid(Cool_expr):
 
 class Expr_Arith(Cool_expr):
     def typeCheck(self, env):
-        t1 = self.e1.typeCheck(env)
-        t2 = self.e2.typeCheck(env)
+        t1 = self.e1.flush_types(env)
+        t2 = self.e2.flush_types(env)
         if (not t1 == "Int") or (not t2 == "Int"):
             error(  self.line,
                     "arithmetic on %s %s instead of Ints"
@@ -380,11 +398,13 @@ class Expr_Arith(Cool_expr):
         e1 = Cool_expr.read(fin)
         e2 = Cool_expr.read(fin)
         return Expr_Arith(kwargs["line"], kwargs["ename"], e1, e2)
+    def tostr(self):
+        return "%s\n%s%s" % (self.op, self.e1, self.e2)
 
 class Expr_Equal(Cool_expr):
     def typeCheck(self, env):
-        t1 = self.lhs.typeCheck(env)
-        t2 = self.rhs.typeCheck(env)
+        t1 = self.lhs.flush_types(env)
+        t2 = self.rhs.flush_types(env)
         if  (t1 in ["Int", "String", "Bool"] or \
             t2 in ["Int", "String", "Bool"]) and \
                 t1 != t2:
@@ -400,12 +420,14 @@ class Expr_Equal(Cool_expr):
         lhs = Cool_expr.read(fin)
         rhs = Cool_expr.read(fin)
         return Expr_Equal(kwargs["line"], lhs, rhs)
+    def tostr(self):
+        return "eq\n%s%s" % (self.lhs, self.rhs)
 
 
 class Expr_Cmp(Cool_expr):
     def typeCheck(self, env):
-        t1 = self.lhs.typeCheck(env)
-        t2 = self.rhs.typeCheck(env)
+        t1 = self.lhs.flush_types(env)
+        t2 = self.rhs.flush_types(env)
         if not (t1 == "Int" and t2 == "Int"):
             error(  self.line,
                     "comparison between %s and %s"
@@ -421,10 +443,12 @@ class Expr_Cmp(Cool_expr):
         lhs = Cool_expr.read(fin)
         rhs = Cool_expr.read(fin)
         return Expr_Cmp(kwargs["line"], kwargs["ename"], lhs, rhs)
+    def tostr(self):
+        return "%s\n%s%s" % (self.op, self.lhs, self.rhs)
 
 class Expr_Not(Cool_expr):
     def typeCheck(self, env):
-        t = self.expr.typeCheck(env)
+        t = self.expr.flush_types(env)
         if not t == "Bool":
             error(  self.line,
                     "not applied to type %s instead of Bool"
@@ -437,10 +461,12 @@ class Expr_Not(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Not(kwargs["line"], e)
+    def tostr(self):
+        return "not\n%s" % (self.expr)
 
 class Expr_Negate(Cool_expr):
     def typeCheck(self, env):
-        t = self.expr.typeCheck(env)
+        t = self.expr.flush_types(env)
         if not t == "Int":
             error(  self.line,
                     "not applied to type %s instead of Int"
@@ -453,6 +479,8 @@ class Expr_Negate(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Negate(kwargs["line"], e)
+    def tostr(self):
+        return "not\n%s" % (self.expr)
 
 class Expr_Integer(Cool_expr):
     def typeCheck(self, env):
@@ -464,8 +492,8 @@ class Expr_Integer(Cool_expr):
     def read(fin, **kwargs):
         int_value = fin.readline()[:-1]
         return Expr_Integer(kwargs["line"], int_value)
-    def __str__(self):
-        return "int: " + self.int_value + "\n"
+    def tostr(self):
+        return "integer\n%s\n" % (self.int_value)
 
 class Expr_String(Cool_expr):
     def typeCheck(self, env):
@@ -477,6 +505,8 @@ class Expr_String(Cool_expr):
     def read(fin, **kwargs):
         s = fin.readline()[:-1]
         return Expr_String(kwargs["line"], s)
+    def tostr(self):
+        return "string\n%s\n" % (self.str_value)
 
 class Expr_Id(Cool_expr):
     def typeCheck(self, env):
@@ -488,6 +518,8 @@ class Expr_Id(Cool_expr):
     def read(fin, **kwargs):
         i = Cool_Id.read(fin)
         return Expr_Id(kwargs["line"], i)
+    def tostr(self):
+        return "identifier\n%s" % (self.cool_id)
 
 class Expr_Bool(Cool_expr):
     def typeCheck(self, env):
@@ -498,6 +530,8 @@ class Expr_Bool(Cool_expr):
         super().__init__(line)
     def read(fin, **kwargs):
         return Expr_Bool(kwargs["line"], kwargs["ename"])
+    def tostr(self):
+        return "%s\n" % (self.bool_value)
 
 class Expr_Let(Cool_expr):
     def typeCheck(self, env):
@@ -515,13 +549,13 @@ class Expr_Let(Cool_expr):
                         "unknown type %s"
                         % (btype))
             if expr:
-                etype = expr.typeCheck(env)
+                etype = expr.flush_types(env)
                 if not env.is_parent_child(btype, etype):
                     error(  self.line,
                             "initializer type %s does not conform to type %s"
                             % (etype, btype))
             env.add_var(bname, btype)
-        return self.body.typeCheck(env)
+        return self.body.flush_types(env)
 
     class Binding():
         def __init__(self, name, btype, expr = None):
@@ -544,6 +578,10 @@ class Expr_Let(Cool_expr):
             return self.btype.get_name()
         def get_expr(self):
             return self.expr
+        def __str__(self):
+            if self.expr:
+                return "let_binding_init\n%s%s%s" % (self.name, self.btype, self.expr)
+            return "let_binding_no_init\n%s%s" % (self.name, self.btype)
 
     def __init__(self, line, bindings, body):
         self.bindings = bindings
@@ -553,10 +591,12 @@ class Expr_Let(Cool_expr):
         bindings = read_lst(Expr_Let.Binding.read, fin)
         body     = Cool_expr.read(fin)
         return Expr_Let(kwargs["line"], bindings, body)
+    def tostr(self):
+        return "let\n%s%s" % (elst_to_str(self.bindings, self.body))
 
 class Expr_Case(Cool_expr):
     def typeCheck(self, env):
-        self.expr.typeCheck(env)
+        self.expr.flush_types(env)
         types = map(lambda x: x.typeCheck(env), self.elements)
         return reduce(lambda a,b: env.lub(a,b), types)
 
@@ -573,7 +613,7 @@ class Expr_Case(Cool_expr):
                 error(  self.ctype.line,
                         "using SELF_TYPE as a case branch type is not allowed")
             env.add_var(vname, Cool_type(vtype))
-            return expr.typeCheck(env)
+            return expr.flush_types(env)
         def __init__(self, name, ctype, expr):
             self.name = name
             self.ctype= ctype
@@ -583,6 +623,8 @@ class Expr_Case(Cool_expr):
             vtype   = Cool_Id.read(fin)
             body    = Cool_expr.read(fin)
             return Expr_Case.CaseElement(var, vtype, body)
+        def __str__(self):
+            return "%s%s%s" % (self.name, self.ctype, self.expr)
     def __init__(self, line, expr, elements):
         self.expr = expr
         self.elements = elements
@@ -591,15 +633,19 @@ class Expr_Case(Cool_expr):
         expr     = Cool_expr.read(fin)
         elements = read_lst(Expr_Case.CaseElement.read, fin)
         return Expr_Case(kwargs["line"], expr, elements)
+    def tostr(self):
+        return "case\n%s%s" % (self.expr, elst_to_str(self.elements))
 
 class Expr_Internal(Cool_expr):
     def typeCheck(self, env):
-        if self.static_type == "SELF_TYPE":
+        if self.stype == "SELF_TYPE":
             return env.get_selftype()
         else:
-            return self.static_type
+            return self.stype
 
-    def __init__(self, static_type, details):
+    def __init__(self, stype, details):
         self.details = details
-        self.static_type = Cool_type(static_type)
+        self.stype = Cool_type(stype)
         super().__init__(0)
+    def tostr(self):
+        return "internal\n%s" % (self.details)
