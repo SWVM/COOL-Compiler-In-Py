@@ -12,7 +12,7 @@ class Cool_Id():
         self.name = name
         self.line = line
     def __str__(self):
-        return self.name
+        return "%s\n%s\n" % (self.line, self.name)
     def __repr__(self):
         return self.__str__()
     def get_name(self):
@@ -378,6 +378,8 @@ class Expr_Isvoid(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Isvoid(kwargs["line"], e)
+    def tostr(self):
+        return "isvoid\n%s" % (self.expr)
 
 class Expr_Arith(Cool_expr):
     def typeCheck(self, env):

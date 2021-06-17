@@ -8,7 +8,7 @@ def read_lst(func, fin, args=[]):
     return lst
 
 def elst_to_str(elst):
-    return "%d\n%s" % (len(elst), ''.join(elst))
+    return "%d\n%s" % (len(elst), ''.join([str(i) for i in elst]))
 
 
 def error(line, message):

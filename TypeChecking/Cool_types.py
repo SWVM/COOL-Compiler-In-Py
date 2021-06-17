@@ -23,14 +23,24 @@ class Cool_prog():
         self.classes[c.get_name()] = c
         c.set_prog(self)
 
+    def tc_pre_check(self):
+        cycle = self.inheritance.get_cycle()
+        if cycle:
+            error(  "0",
+                    "inheritance cycle: %s" % (cycle))
+        self.check_main()
 
     def tc_class_map(self):
-        for c in self.classes.values():
-            c.tc_attris(self.inheritance)
+        print("class_map")
+        print(len(self.classes))
+        for c in sorted(self.classes.keys()):
+            self.classes[c].tc_attris(self.inheritance)
 
     def tc_imp_map(self):
-        for c in self.classes.values():
-            c.tc_methods(self.inheritance)
+        print("implementation_map")
+        print(len(self.classes))
+        for c in sorted(self.classes.keys()):
+            self.classes[c].tc_methods(self.inheritance)
 
     def fetch_class(self, cname):
         try:
@@ -38,23 +48,12 @@ class Cool_prog():
         except:
             raise Exception("class not found: " + str(cname))
 
-    def typeCheck(self):
-        cycle = self.inheritance.get_cycle()
-        if cycle:
-            error(  "0",
-                    "inheritance cycle: %s" % (cycle))
-        self.check_main()
-
-        for c in self.classes.values():
-            c.typeCheck(self.inheritance)
-
     def get_method_env(self):
         method_env = {}
         for c in self.classes.values():
             for m in c.get_methods().values():
                 method_env[(c.get_name(), m.get_name())] = m
         return method_env
-
 
     def check_main(self):
         try:
@@ -87,31 +86,20 @@ class Cool_class():
     def tc_methods(self, inheritance):
         methods = self.get_methods().values()
         env     = self.get_init_env(inheritance)
+        print(self.name.get_name())
+        print(len(methods))
         for m in methods:
             m.typeCheck(env)
-            print(m.body_expr)
+            print(m)
 
     def tc_attris(self, inheritance):
         attris = self.get_attris().values()
         env     = self.get_init_env(inheritance)
+        print(self.name.get_name())
+        print(len(attris))
         for a in attris:
             a.typeCheck(env)
-            print(a.init_expr)
-
-    def typeCheck(self, inheritance):
-        # care about yourself
-        attris = self.get_attris().values()
-        methods = self.get_methods().values()
-        env = Typing_env(   o = self.get_init_obj_env(),
-                            m = self.prog.get_method_env(),
-                            c = Cool_type(self.get_name(), selftype = True),
-                            inheritance = inheritance)
-        for a in attris:
-            a.typeCheck(env)
-            print(a.init_expr)
-        for m in methods:
-            m.typeCheck(env)
-            print(m.body_expr)
+            print(a)
 
     # read a class from .cl-ast file
     def read(fin):
@@ -145,7 +133,6 @@ class Cool_class():
         self.PulledFromParents = False
 
     def get_init_obj_env(self):
-        ## TODO: get attris, without initalizer.
         o = {}
         o["self"] = Cool_type(self.get_name(), selftype = True)
         for a in self.get_attris().values():
@@ -215,9 +202,6 @@ class Cool_class():
             self.pull_from_parent()
         return copy(self.attributes)
 
-    def __str__(self):
-        return "=======\nclass: %s\nPARENT: %s\n ATTRI: \n%s\nMETHODS: %s\n=======" % (self.name, "self.parent.name", self.attributes, self.methods)
-
 
 class Cool_feature():
     def read(fin, owner):
@@ -280,10 +264,8 @@ class Cool_attri(Cool_feature):
         super().__init__(name, declared_type, owner)
     def __str__(self):
         if self.init_expr:
-            return "ATTRI_INIT: "+str(self.name.name) + str(self.declared_type.name) + str(self.init_expr) +"\n"
-        return "ATTRI_NO_INIT: "+str(self.name.name) + str(self.declared_type.name) + "\n"
-    def __repr__(self):
-        return self.__str__()
+            return "initializer\n%s\n%s\n%s" % (self.name.get_name(), self.declared_type.get_name(), self.init_expr)
+        return "no_initializer\n%s\n%s" % (self.name.get_name(), self.declared_type.get_name())
 
 
 
@@ -362,9 +344,7 @@ class Cool_method(Cool_feature):
     def get_line(self):
         return self.name.get_line()
     def __str__(self):
-        return "METHOD: "+str(self.name) + str(self.declared_type) + str(self.formals)+str(self.body_expr) + str(self.owner)
-    def __repr__(self):
-        return self.__str__()
+        return "%s%s%s%s" % (self.name, elst_to_str(self.formals), self.owner, self.body_expr)
 
 
 class Cool_formal():
@@ -376,17 +356,14 @@ class Cool_formal():
     def __init__(self, name, declared_type):
         self.name = name
         self.declared_type = declared_type
-    def __str__(self):
-        return "FORMALS: "+str(self.name) + str(self.declared_type)
-    def __repr__(self):
-        return self.__str__()
-
     def get_type(self):
         return self.declared_type.get_name()
     def get_name(self):
         return self.name.get_name()
     def get_line(self):
         return self.declared_type.get_line()
+    def __str__(self):
+        return "%s" % (self.name)
 
 
 
