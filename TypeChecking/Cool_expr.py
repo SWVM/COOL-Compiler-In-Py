@@ -33,7 +33,11 @@ class Cool_type():
             return other == self.tname
         else:
             return self.tname == other.tname
-
+    def static_str(self):
+        if self.selftype:
+            return "SELF_TYPE"
+        else:
+            return self.tname
     def __str__(self):
         if self.selftype:
             return "SELF_TYPE(%s)" % self.tname
@@ -91,7 +95,10 @@ class Typing_env():
         else:
             return (p == c) and (p.selftype == c.selftype)
     def lub(self, a, b):
-        return Cool_type(self.inheritance.lub(a.tostr(), b.tostr()))
+        if a.selftype and b.selftype:
+            return Cool_type(self.inheritance.lub(a.tostr(), b.tostr()), selftype = True)
+        else:
+            return Cool_type(self.inheritance.lub(a.tostr(), b.tostr()))
 
 
 class Cool_expr():
@@ -155,7 +162,7 @@ class Cool_expr():
         return self.static_type
 
     def __str__(self):
-        return "%s\n%s\n%s" % (self.line, self.static_type, self.tostr())
+        return "%s\n%s\n%s" % (self.line, self.static_type.static_str(), self.tostr())
     def tostr(self):
         raise Exception("TOSTR IS NOT OVERIDDEN IN CLASS: " + str(type(self)))
 
@@ -293,7 +300,6 @@ class Expr_If(Cool_expr):
                     % (predicate_type))
         bt_type        = self.bt.flush_types(env)
         bf_type        = self.bf.flush_types(env)
-
         return env.lub(bt_type, bf_type)
 
     def __init__(self, line, predicate, bt, bf):
@@ -594,7 +600,7 @@ class Expr_Let(Cool_expr):
         body     = Cool_expr.read(fin)
         return Expr_Let(kwargs["line"], bindings, body)
     def tostr(self):
-        return "let\n%s%s" % (elst_to_str(self.bindings, self.body))
+        return "let\n%s%s" % (elst_to_str(self.bindings), self.body)
 
 class Expr_Case(Cool_expr):
     def typeCheck(self, env):
@@ -650,4 +656,4 @@ class Expr_Internal(Cool_expr):
         self.stype = Cool_type(stype)
         super().__init__(0)
     def tostr(self):
-        return "internal\n%s" % (self.details)
+        return "internal\n%s\n" % (self.details)

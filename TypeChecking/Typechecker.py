@@ -6,6 +6,4 @@ if __name__ == '__main__':
     import sys
     prog = Cool_prog(sys.argv[1])
     prog.tc_pre_check()
-    prog.tc_class_map()
-    prog.tc_imp_map()
-    # prog.typeCheck()
+    print(prog.tc_class_map() + prog.tc_imp_map())
