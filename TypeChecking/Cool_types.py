@@ -20,7 +20,7 @@ class Cool_prog():
     def add_class(self, c):
         if c.get_name() in self.classes:
             error(  c.get_line(),
-                    "class %s redifined" % (c.get_name()))
+                    "class %s redefined" % (c.get_name()))
         if c.parent:
             self.inheritance.add_edge(c.parent.get_name(), c.get_name())
         self.classes[c.get_name()] = c
@@ -84,19 +84,17 @@ class Cool_prog():
 
 
     def check_main(self):
-        try:
-            class_Main = self.classes["Main"]
-        except:
+        class_Main = self.classes.get("Main")
+        if not class_Main:
             error(  "0",
                     "class Main not found")
-        try:
-            method_main= class_Main.get_methods()["main"]
-        except:
+
+        method_main= class_Main.get_methods().get("main")
+        if not method_main:
             error(  "0",
                     "class Main method main not found")
-        try:
-            assert len(method_main.formals) == 0
-        except:
+
+        if len(method_main.formals) != 0:
             error(  "0",
                     "class Main method main with 0 parameters not found")
 
@@ -274,7 +272,7 @@ class Cool_feature():
             atype = Cool_Id.read(fin)
             if name.get_name() == "self":
                 error(  name.get_line(),
-                        "class %s has an attribute named self" % (owner.get_name()))
+                        "class %s has an attribute named self" % (owner))
             if ftype == "attribute_init":
                 expr = Cool_expr.read(fin)
                 f = Cool_attri(name, atype, owner, expr)
@@ -308,7 +306,7 @@ class Cool_attri(Cool_feature):
 
     def __str__(self):
         if self.init_expr:
-            return "initializer\n%s\n%s\n%s\n" % (self.name.get_name(), self.declared_type.get_name(), self.init_expr)
+            return "initializer\n%s\n%s\n%s" % (self.name.get_name(), self.declared_type.get_name(), self.init_expr)
         return "no_initializer\n%s\n%s\n" % (self.name.get_name(), self.declared_type.get_name())
 
     def annotated_AST(self):
@@ -323,7 +321,7 @@ class Cool_attri(Cool_feature):
         if not env.has_type(declared_type):
             error(  self.declared_type.get_line(),
                     "class %s has attribute %s with unknown type %s"
-                    % (self.owner, self.name, declared_type))
+                    % (self.owner, self.get_name(), declared_type))
 
         if self.init_expr:
             init_type = self.init_expr.tc(env)
@@ -366,11 +364,11 @@ class Cool_method(Cool_feature):
             if fname == "self":
                 error(  f.get_line(),
                         "class %s has method %s with formal parameter named self"
-                        % (self.owner.get_name(), self.name.get_name()))
+                        % (self.owner, self.name.get_name()))
             if not env.has_type(ftype):
                 error(  f.declared_type.get_line(),
                         "class %s has method %s with formal parameter of unknown type %s"
-                        % (self.owner.get_name(), self.name.get_name(), f.get_type()))
+                        % (self.owner, self.name.get_name(), f.get_type()))
             if fname in formal_vars:
                 error(  f.get_line(),
                         "class %s has method %s with duplicate formal parameter named %s"
@@ -388,7 +386,7 @@ class Cool_method(Cool_feature):
         if not env.is_parent_child(rtype, expr_type):
             error(  self.get_line(),
                     "%s does not conform to %s in method %s"
-                    % (expr_type, rtype, self.name))
+                    % (expr_type, rtype, self.get_name()))
         return rtype
 
     def override_check(self, pm):
@@ -397,16 +395,16 @@ class Cool_method(Cool_feature):
         if len(sfs) != len(pfs):
             error(  self.get_line(),
                     "class %s redefines method %s and changes number of formals"
-                    % (self.owner, self.name))
+                    % (self.owner, self.get_name()))
         if self.return_type != pm.return_type:
             error(  self.declared_type.get_line(),
                     "class %s redefines method %s and changes return type (from %s to %s)"
-                    % (self.owner, self.name, pm.return_type, self.return_type))
+                    % (self.owner, self.get_name(), pm.return_type, self.return_type))
         for i in range(len(sfs)):
-            if sfs[i].get_type() != pfs[i].get_type:
+            if sfs[i].get_type() != pfs[i].get_type():
                 error(  sfs[i].get_line(),
                         "class %s redefines method %s and changes type of formal %s"
-                        % (self.owner.get_name(), self.get_name(), sfs[i].get_name()))
+                        % (self.owner, self.get_name(), sfs[i].get_name()))
 
 
 class Cool_formal():

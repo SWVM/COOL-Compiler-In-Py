@@ -11,3 +11,4 @@ if __name__ == '__main__':
     out.write(prog.tc_imp_map())
     out.write(prog.tc_parent_map())
     out.write(prog.annotated_AST())
+    out.close()

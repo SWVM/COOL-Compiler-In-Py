@@ -204,7 +204,7 @@ class Expr_DDispatch(Cool_expr):
                         % (i+1, arguments[i], signiture[i]))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
-            rtype = env.get_selftype()
+            rtype = t0
         return rtype
 
     def __init__(self, line, expr, method, args):
@@ -242,7 +242,7 @@ class Expr_SDispatch(Cool_expr):
                         % (i+1, arguments[i], signiture[i]))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
-            rtype = env.get_selftype()
+            rtype = t0
         return rtype
 
     def __init__(self, line, expr, target, method, args):
@@ -277,7 +277,7 @@ class Expr_SelfDispatch(Cool_expr):
                         % (i+1, arguments[i], signiture[i]))
         rtype = env.get_method_return(t0, mname)
         if rtype == "SELF_TYPE":
-            rtype = env.get_selftype()
+            rtype = t0
         return rtype
 
     def __init__(self, line, method, args):

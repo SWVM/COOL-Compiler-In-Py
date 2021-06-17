@@ -7,7 +7,7 @@ if __name__ == '__main__':
     root_dir = Path(__file__).parent.absolute()
     good = root_dir / "good"
     bad  = root_dir / "bad"
-    to_be_tested = root_dir.parent / "parser.py"
+    to_be_tested = root_dir.parent / "Typechecker.py"
     cool_path = root_dir / "cool.exe"
     print("testing //good ......")
 
@@ -21,9 +21,9 @@ if __name__ == '__main__':
         if f.suffix == ".cl":
             print(f)
             print("================================================================")
-            subprocess.run(["py", str(to_be_tested), str(f)+"-lex"])
-            subprocess.run([str(cool_path), "--parse" , str(f)])
-            result = subprocess.run(["fc", str(f)+"-ast", str(f)+"-ast-test"], capture_output=True)
+            subprocess.run(["py", str(to_be_tested), str(f)+"-ast"])
+            subprocess.run([str(cool_path), "--type" , str(f)])
+            result = subprocess.run(["fc", str(f)+"-type", str(f)+"-type-test"], capture_output=True)
             print("================")
             if "FC: no differences encountered" in str(result.stdout):
                 print("PASS")
@@ -38,8 +38,8 @@ if __name__ == '__main__':
     print("testing //bad ......")
     for f in  bad.iterdir():
         if f.suffix == ".cl":
-            test_stdout = subprocess.run(["py", str(to_be_tested), str(f)+"-lex"], capture_output=True)
-            ref_stdout  = subprocess.run([str(cool_path), "--parse" , str(f)], capture_output=True)
+            test_stdout = subprocess.run(["py", str(to_be_tested), str(f)+"-ast"], capture_output=True)
+            ref_stdout  = subprocess.run([str(cool_path), "--type" , str(f)], capture_output=True)
             print(test_stdout.stdout)
             print(ref_stdout.stdout)
             print("================")

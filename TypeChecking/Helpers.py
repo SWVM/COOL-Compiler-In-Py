@@ -16,6 +16,7 @@ def lst_to_str(fun, lst):
 def error(line, message):
     print("ERROR: %s: Type-Check: %s" % (line, message))
     exit(1)
+    
 class Pedigree():
     class Node():
         def __init__(self, name):
