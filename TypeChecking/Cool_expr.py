@@ -488,7 +488,7 @@ class Expr_Negate(Cool_expr):
         e = Cool_expr.read(fin)
         return Expr_Negate(kwargs["line"], e)
     def tostr(self):
-        return "not\n%s" % (self.expr)
+        return "negate\n%s" % (self.expr)
 
 class Expr_Integer(Cool_expr):
     def typeCheck(self, env):

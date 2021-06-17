@@ -10,6 +10,8 @@ def read_lst(func, fin, args=[]):
 def elst_to_str(elst):
     return "%d\n%s" % (len(elst), ''.join([str(i) for i in elst]))
 
+def lst_to_str(fun, lst):
+    return "%d\n%s" % (len(lst), ''.join([fun(i) for i in lst]))
 
 def error(line, message):
     print("ERROR: %s: Type-Check: %s" % (line, message))

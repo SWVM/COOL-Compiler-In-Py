@@ -13,7 +13,8 @@ class Cool_prog():
         self.classes = {}
 
         fin = open(fname, "r")
-        cls = [OBJECT, STRING, INT, BOOL, IO] + read_lst(Cool_class.read, fin)
+        self.user_cls = read_lst(Cool_class.read, fin)
+        cls = [OBJECT, STRING, INT, BOOL, IO] + self.user_cls
         for c in cls:
             self.add_class(c)
     def add_class(self, c):
@@ -64,6 +65,24 @@ class Cool_prog():
             buffer.write(s)
         return buffer.getvalue()
 
+    def tc_parent_map(self):
+        buffer = StringIO()
+        buffer.write("parent_map\n")
+        buffer.write( "%d\n" % (len(self.classes)-1) )
+        for c in sorted(self.classes.keys()):
+            cl = self.classes[c]
+            if cl.parent:
+                buffer.write("%s\n%s\n"  % (cl.get_name(), cl.parent.get_name()) )
+        return buffer.getvalue()
+
+    def annotated_AST(self):
+        buffer = StringIO()
+        buffer.write( "%d\n" % (len(self.user_cls)) )
+        for c in self.user_cls:
+            buffer.write( c.annotated_AST() )
+        return buffer.getvalue()
+
+
     def check_main(self):
         try:
             class_Main = self.classes["Main"]
@@ -93,10 +112,12 @@ class Cool_class():
     ###
     # initializer and helper
     ###
-    def __init__(self, name, parent = DEFAULT_PARENT, features = [], prog = None):
+    def __init__(self, name, parent = DEFAULT_PARENT, features = [], prog = None, usr_inherit = None):
         self.name = name
         self.prog = prog
         self.parent = parent
+        self.usr_inherit = usr_inherit
+        self.features = features
         self.attributes = {}
         self.methods = {}
         for f in  features:
@@ -105,6 +126,12 @@ class Cool_class():
             elif isinstance(f, Cool_attri):
                 self.add_attris(f)
         self.PulledFromParents = False
+
+    def annotated_AST(self):
+        if self.usr_inherit == "inherits":
+            return "%s%s\n%s%s" % (self.name, self.usr_inherit, self.parent, lst_to_str(Cool_feature.annotated_AST, self.features))
+        elif self.usr_inherit == "no_inherits":
+            return "%s%s\n%s" % (self.name, self.usr_inherit, lst_to_str(Cool_feature.annotated_AST, self.features))
 
     def read(fin):
         cname   = Cool_Id.read(fin)
@@ -123,18 +150,17 @@ class Cool_class():
                     "class %s inherits from %s" % (cname.get_name(), parent.get_name()))
 
         features = read_lst(Cool_feature.read, fin, args=[cname.get_name()])
-        return Cool_class(cname, parent = parent, features = features)
+        return Cool_class(cname, parent = parent, features = features, usr_inherit = inherit)
 
     def pull_from_parent(self):
         self.PulledFromParents = True
         if self.parent == None:
             return
-
         try:
             parent = self.prog.fetch_class(self.parent)
         except:
             error(  self.parent.get_line(),
-                    "class %s inherits from unknown class %s" % (self.name, self.parent))
+                    "class %s inherits from unknown class %s" % (self.get_name(), self.parent.get_name()))
 
         inherited_m = parent.get_methods()
         for k in self.methods.keys():
@@ -185,6 +211,7 @@ class Cool_class():
                     "class %s redefines method %s" % (self.get_name(), m.get_name()))
         self.methods[m.get_name()] = m
 
+
     ###
     # TC methods
     ###
@@ -195,8 +222,7 @@ class Cool_class():
         buffer.write("%s\n" % (self.name.get_name()))
         buffer.write("%d\n" % len(methods) )
         for m in methods:
-            m.typeCheck(env)
-            buffer.write(str(m))
+            buffer.write(m.get_ast(env))
         return buffer.getvalue()
 
     def tc_attris(self, inheritance):
@@ -206,8 +232,7 @@ class Cool_class():
         buffer.write("%s\n" % (self.name.get_name()))
         buffer.write("%d\n" % len(attris) )
         for a in attris:
-            a.typeCheck(env)
-            buffer.write(str(a))
+            buffer.write(a.get_ast(env))
         return buffer.getvalue()
 
     def get_init_obj_env(self):
@@ -230,7 +255,9 @@ class Cool_feature():
         self.name = name
         self.declared_type = declared_type
         self.owner = owner
-
+        self.ast = None
+    def __str__(self):
+        return self.ast
     def read(fin, owner):
         ftype = fin.readline()[:-1]
         if ftype == "method":
@@ -255,6 +282,13 @@ class Cool_feature():
                 f = Cool_attri(name, atype, owner)
         return f
 
+    def get_ast(self, env):
+        if not self.ast:
+            self.tc_feature(env)
+        return self.ast
+    def tc_feature(self, env):
+        self.typeCheck(env)
+        self.ast = str(self)
     def typeCheck(self, env):
         raise Exception("to be override")
     def get_name(self):
@@ -263,6 +297,8 @@ class Cool_feature():
         return self.name.get_line()
     def get_type(self):
         return self.declared_type.get_name()
+    def annotated_AST(self):
+        return self.annotated_AST()
 
 
 class Cool_attri(Cool_feature):
@@ -272,8 +308,13 @@ class Cool_attri(Cool_feature):
 
     def __str__(self):
         if self.init_expr:
-            return "initializer\n%s\n%s\n%s" % (self.name.get_name(), self.declared_type.get_name(), self.init_expr)
-        return "no_initializer\n%s\n%s" % (self.name.get_name(), self.declared_type.get_name())
+            return "initializer\n%s\n%s\n%s\n" % (self.name.get_name(), self.declared_type.get_name(), self.init_expr)
+        return "no_initializer\n%s\n%s\n" % (self.name.get_name(), self.declared_type.get_name())
+
+    def annotated_AST(self):
+        if self.init_expr:
+            return "attribute_init\n%s%s%s" % (self.name, self.declared_type, self.init_expr)
+        return "attribute_no_init\n%s%s" % (self.name, self.declared_type)
 
     def typeCheck(self, env):
         declared_type = Cool_type(self.declared_type.get_name())
@@ -303,7 +344,8 @@ class Cool_method(Cool_feature):
         super().__init__(name, declared_type, owner)
     def __str__(self):
         return "%s\n%s%s\n%s" % (self.get_name(), elst_to_str(self.formals), self.owner, self.body_expr)
-
+    def annotated_AST(self):
+        return "method\n%s%s%s%s" % (self.name, lst_to_str(Cool_formal.annotated_AST ,self.formals), self.declared_type, self.body_expr)
     def get_sig_lines(self):
         return list(map(lambda x: x.get_line(), self.formals))
     def get_ret_line(self):
@@ -373,6 +415,8 @@ class Cool_formal():
         self.declared_type = declared_type
     def __str__(self):
         return "%s\n" % (self.get_name())
+    def annotated_AST(self):
+        return "%s%s" % (self.name, self.declared_type)
     def read(fin):
         name = Cool_Id.read(fin)
         declared_type = Cool_Id.read(fin)
