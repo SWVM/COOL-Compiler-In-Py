@@ -1,4 +1,4 @@
-# Lexer
+# Parser
 ## Notes
 - based on [PLY](https://www.dabeaz.com/ply/ply.html)
 
@@ -8,6 +8,5 @@
 
 
 ## known issues
-- Some code are ugly, but they works perfectly fine
 - output file name: fname.cl-ast-test
 - PLY yacc actually takes input from other classes that mimics the Lexer, [here](https://www.dabeaz.com/ply/ply.html#ply_nn36)
