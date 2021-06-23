@@ -1,4 +1,7 @@
-
+class Cool_Id():
+    def __init__(self, name, line):
+        self.name = name
+        self.line = line
 
 class Env():
     def __init__(self):
@@ -25,20 +28,80 @@ class Env():
     def sadd(self, k, v):
         self.s[k] = v
 
-class Cool_obj():
-    def __init__(self, type, init):
+class Cool_value():
+    def __init__(self, type, value):
         self.type = type
-        # TODO: INIT object vars
+        self.value= value
 
-class Cool_base_class_obj(Cool_obj):
-    # TODO: seperate base classes or as one py class?
-    def __init__(self, type, v):
-        self.type = type
-        self.v    = v
-        if type == "String":
-            self.len = len(v)
+class Cool_int(Cool_value):
+    def __init__(self, value = 0):
+        super(self).__init__("Int", value)
+
+class Cool_string(Cool_value):
+    def __init__(self, value = ""):
+        self.length = len(value)
+        super(self).__init__("String", value)
+
+class Cool_bool(Cool_value):
+    def __init__(self, value = False):
+        super(self).__init__("Bool", value)
+
+class Cool_obj(Cool_value):
+    def __init__(self, type, attris):
+        super(self).__init__(type, attris)
+
+class Cool_void(Cool_value):
+    def __init__(self):
+        super(self).__init__("void", None)
+
 
 class Cool_Prog():
+    def __init__(self, fname):
+        self.fin = open(fname, "r")
+        self.cmap = {}
+        self.imap = {}
+        self.pmap = {}
+
+    def read_class_map(self, fin):
+        assert fin.readline() == "class_map\n"
+        # TODO: class map
+    def read_imp_map(self, fin):
+        assert fin.readline() == "implementation_map\n"
+        # TODO: imp map
+    def read_parent_map(self, fin):
+        assert fin.readline() == "parent_map\n"
+        # TODO: parent map
+
+
+class Cool_attri():
+    def read(fin):
+        init = fin.readline()[:-1]
+        name = fin.readline()[:-1]
+        type = fin.readline()[:-1]
+        if init == "initializer":
+            init = Cool_Expr.read()
+            return Cool_attri(name, type, init)
+        return Cool_attri(name, type)
+
+    def __init__(self, name, type, init = None):
+        self.name = name
+        self.type = type
+        self.init = init
+
+
+class Cool_method():
+    def read(fin):
+        name = fin.readline()[:-1]
+
+
+    def __init__(self, name, formals, body):
+        self.name = name
+        self.formals = formals
+        self.body = body
+
+
+
+
 
 class Cool_Expr():
     def __init__(self):
