@@ -1,3 +1,6 @@
+from helper import *
+
+
 class Cool_Id():
     def read(fin):
         line = fin.readline()[:-1]
@@ -13,6 +16,7 @@ class Cool_expr():
     def read(fin):
         kwargs = {}  # holds extra details for sub classes
         kwargs["line"] = fin.readline()[:-1]
+        kwargs["type"] = fin.readline()[:-1]
         kwargs["ename"] = fin.readline()[:-1]
         if kwargs["ename"] == "assign":
             return Expr_Assign.read(fin, **kwargs)
@@ -54,24 +58,14 @@ class Cool_expr():
             return Expr_Let.read(fin, **kwargs)
         elif kwargs["ename"] == "case":
             return Expr_Case.read(fin, **kwargs)
+        elif kwargs["ename"] == "internal":
+            return Expr_Internal.read(fin, **kwargs)
         else:
             raise Exception("expr not yet implemented: "+ kwargs["ename"])
 
     def __init__(self, line):
+        self.VISITED = False
         self.line   = line
-
-    def tc(self, env):
-        self.flush_types(env)
-        return self.static_type
-
-    def flush_types(self, env):
-        self.static_type = self.typeCheck(env)
-        return self.static_type
-
-    def __str__(self):
-        return "%s\n%s\n%s" % (self.line, self.static_type.static_str(), self.tostr())
-    def tostr(self):
-        raise Exception("TOSTR IS NOT OVERIDDEN IN CLASS: " + str(type(self)))
 
 class Expr_Assign(Cool_expr):
     def __init__(self, line, var, expr):
@@ -82,8 +76,6 @@ class Expr_Assign(Cool_expr):
         var = Cool_Id.read(fin)
         expr= Cool_expr.read(fin)
         return Expr_Assign(kwargs["line"], var, expr)
-    def tostr(self):
-        return "assign\n%s%s" % (self.var, self.expr)
 
 class Expr_DDispatch(Cool_expr):
     def __init__(self, line, expr, method, args):
@@ -96,8 +88,6 @@ class Expr_DDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_DDispatch(kwargs["line"], e, m ,args)
-    def tostr(self):
-        return "dynamic_dispatch\n%s%s%s" % (self.expr, self.method, elst_to_str(self.args))
 
 class Expr_SDispatch(Cool_expr):
     def __init__(self, line, expr, target, method, args):
@@ -112,8 +102,6 @@ class Expr_SDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_SDispatch(kwargs["line"], e, t, m, args)
-    def tostr(self):
-        return "static_dispatch\n%s%s%s%s" % (self.expr, self.target, self.method, elst_to_str(self.args))
 
 class Expr_SelfDispatch(Cool_expr):
     def __init__(self, line, method, args):
@@ -124,8 +112,6 @@ class Expr_SelfDispatch(Cool_expr):
         m       = Cool_Id.read(fin)
         args    = read_lst(Cool_expr.read, fin)
         return Expr_SelfDispatch(kwargs["line"], m, args)
-    def tostr(self):
-        return "self_dispatch\n%s%s" % (self.method, elst_to_str(self.args))
 
 class Expr_If(Cool_expr):
     def __init__(self, line, predicate, bt, bf):
@@ -138,8 +124,6 @@ class Expr_If(Cool_expr):
         bt        = Cool_expr.read(fin)
         bf        = Cool_expr.read(fin)
         return Expr_If(kwargs["line"], predicate, bt, bf)
-    def tostr(self):
-        return "if\n%s%s%s" % (self.predicate, self.bt, self.bf)
 
 class Expr_While(Cool_expr):
     def __init__(self, line, predicate, body):
@@ -150,8 +134,6 @@ class Expr_While(Cool_expr):
         predicate = Cool_expr.read(fin)
         body      = Cool_expr.read(fin)
         return Expr_While(kwargs["line"], predicate, body)
-    def tostr(self):
-        return "while\n%s%s" % (self.predicate, self.body)
 
 
 class Expr_Block(Cool_expr):
@@ -161,8 +143,6 @@ class Expr_Block(Cool_expr):
     def read(fin, **kwargs):
         exprs = read_lst(Cool_expr.read, fin)
         return Expr_Block(kwargs["line"], exprs)
-    def tostr(self):
-        return "block\n%s" % (elst_to_str(self.exprs))
 
 class Expr_New(Cool_expr):
     def __init__(self, line, tname):
@@ -171,8 +151,6 @@ class Expr_New(Cool_expr):
     def read(fin, **kwargs):
         cname = Cool_Id.read(fin)
         return Expr_New(kwargs["line"], cname)
-    def tostr(self):
-        return "new\n%s" % (self.tname)
 
 class Expr_Isvoid(Cool_expr):
     def __init__(self, line, expr):
@@ -181,9 +159,6 @@ class Expr_Isvoid(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Isvoid(kwargs["line"], e)
-    def tostr(self):
-        return "isvoid\n%s" % (self.expr)
-
 class Expr_Arith(Cool_expr):
     def __init__(self, line, op, e1, e2):
         self.e1 = e1
@@ -194,8 +169,6 @@ class Expr_Arith(Cool_expr):
         e1 = Cool_expr.read(fin)
         e2 = Cool_expr.read(fin)
         return Expr_Arith(kwargs["line"], kwargs["ename"], e1, e2)
-    def tostr(self):
-        return "%s\n%s%s" % (self.op, self.e1, self.e2)
 
 class Expr_Equal(Cool_expr):
     def __init__(self, line, lhs, rhs):
@@ -206,8 +179,6 @@ class Expr_Equal(Cool_expr):
         lhs = Cool_expr.read(fin)
         rhs = Cool_expr.read(fin)
         return Expr_Equal(kwargs["line"], lhs, rhs)
-    def tostr(self):
-        return "eq\n%s%s" % (self.lhs, self.rhs)
 
 
 class Expr_Cmp(Cool_expr):
@@ -220,8 +191,6 @@ class Expr_Cmp(Cool_expr):
         lhs = Cool_expr.read(fin)
         rhs = Cool_expr.read(fin)
         return Expr_Cmp(kwargs["line"], kwargs["ename"], lhs, rhs)
-    def tostr(self):
-        return "%s\n%s%s" % (self.op, self.lhs, self.rhs)
 
 class Expr_Not(Cool_expr):
     def __init__(self, line, expr):
@@ -230,8 +199,6 @@ class Expr_Not(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Not(kwargs["line"], e)
-    def tostr(self):
-        return "not\n%s" % (self.expr)
 
 class Expr_Negate(Cool_expr):
     def __init__(self, line, expr):
@@ -240,8 +207,6 @@ class Expr_Negate(Cool_expr):
     def read(fin, **kwargs):
         e = Cool_expr.read(fin)
         return Expr_Negate(kwargs["line"], e)
-    def tostr(self):
-        return "negate\n%s" % (self.expr)
 
 class Expr_Integer(Cool_expr):
     def __init__(self, line, int_value):
@@ -250,8 +215,6 @@ class Expr_Integer(Cool_expr):
     def read(fin, **kwargs):
         int_value = fin.readline()[:-1]
         return Expr_Integer(kwargs["line"], int_value)
-    def tostr(self):
-        return "integer\n%s\n" % (self.int_value)
 
 class Expr_String(Cool_expr):
     def __init__(self, line, str_value):
@@ -260,8 +223,6 @@ class Expr_String(Cool_expr):
     def read(fin, **kwargs):
         s = fin.readline()[:-1]
         return Expr_String(kwargs["line"], s)
-    def tostr(self):
-        return "string\n%s\n" % (self.str_value)
 
 class Expr_Id(Cool_expr):
     def __init__(self, line, cool_id):
@@ -270,8 +231,6 @@ class Expr_Id(Cool_expr):
     def read(fin, **kwargs):
         i = Cool_Id.read(fin)
         return Expr_Id(kwargs["line"], i)
-    def tostr(self):
-        return "identifier\n%s" % (self.cool_id)
 
 class Expr_Bool(Cool_expr):
     def __init__(self, line, bool_value):
@@ -279,8 +238,6 @@ class Expr_Bool(Cool_expr):
         super().__init__(line)
     def read(fin, **kwargs):
         return Expr_Bool(kwargs["line"], kwargs["ename"])
-    def tostr(self):
-        return "%s\n" % (self.bool_value)
 
 class Expr_Let(Cool_expr):
     class Binding():
@@ -317,8 +274,6 @@ class Expr_Let(Cool_expr):
         bindings = read_lst(Expr_Let.Binding.read, fin)
         body     = Cool_expr.read(fin)
         return Expr_Let(kwargs["line"], bindings, body)
-    def tostr(self):
-        return "let\n%s%s" % (elst_to_str(self.bindings), self.body)
 
 class Expr_Case(Cool_expr):
     class CaseElement(Cool_expr):
@@ -354,13 +309,10 @@ class Expr_Case(Cool_expr):
         expr     = Cool_expr.read(fin)
         elements = read_lst(Expr_Case.CaseElement.read, fin)
         return Expr_Case(kwargs["line"], expr, elements)
-    def tostr(self):
-        return "case\n%s%s" % (self.expr, elst_to_str(self.elements))
 
 class Expr_Internal(Cool_expr):
-    def __init__(self, stype, details):
+    def __init__(self, details):
         self.details = details
-        self.stype = Cool_type(stype)
         super().__init__(0)
-    def tostr(self):
-        return "internal\n%s\n" % (self.details)
+    def read(fin, **kwargs):
+        return Expr_Internal(fin.readline()[:-1])

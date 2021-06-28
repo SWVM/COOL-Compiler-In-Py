@@ -1,32 +1,37 @@
-class Env():
+class Store():
+    MALLOC_COUNTER = 10000
     def __init__(self):
-        self.e = {}
-        self.s = {}
+        self.map = {}
 
-    def epop(self, k):
-        assert k in self.e
-        if len(self.e[k]) == 1:
-            self.e.pop(k)
-        else:
-            self.e.k = self.e.k[1:]
+    def malloc(self):
+        Store.MALLOC_COUNTER += 1
+        return Store.MALLOC_COUNTER
 
-    def spop(self, k):
-        # Not needed?
-        pass
+    def add(self, add, val):
+        self.map[add] = val
 
-    def eadd(self, k, v):
-        if k in self.e:
-            self.e[k].insert(0, v)
-        else:
-            self.e[k] = [v]
+    def get(self, add):
+        assert add in self.map
+        return self.map[add]
 
-    def sadd(self, k, v):
-        self.s[k] = v
+class Env():
+    def __init__(self, map={}):
+        self.map = map
+
+    def add(self, var, add):
+        self.map[var] = add
+
+    def copy(self):
+        return Env(self.map.copy())
+
+
 
 class Cool_value():
     def __init__(self, type, value):
         self.type = type
         self.value= value
+    def get_type(self):
+        return self.type
 
 class Cool_int(Cool_value):
     def __init__(self, value = 0):
