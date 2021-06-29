@@ -27,8 +27,6 @@ class Env():
     def copy(self):
         return Env(self.map.copy())
 
-
-
 class Cool_value():
     def init_for(cname):
         if cname == "Int":

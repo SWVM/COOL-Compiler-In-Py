@@ -1,4 +1,3 @@
-
 from os import name
 
 def error(line, msg):
@@ -17,14 +16,6 @@ class Recurse(Exception):
         self.args = args
         self.kwargs = kwargs
 
-def rec(*args, **kwargs):
-    print("")
-    raise Recurse(*args, **kwargs)
-
-def rec1(*args, **kwargs):
-    print("")
-    return rec1(*args, **kwargs)
-
 def tail_recursive(f):
     def decorated(*args, **kwargs):
         while True:
@@ -35,7 +26,3 @@ def tail_recursive(f):
                 kwargs = r.kwargs
                 continue
     return decorated
-
-if __name__ == "__main__":
-    rec1()
-    tail_recursive(rec)()

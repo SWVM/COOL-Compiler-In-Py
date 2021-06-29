@@ -243,7 +243,7 @@ class Evaluator():
                 return Cool_bool(False)
 
         elif isinstance(exp, Lt):
-           
+           # TODO: resume here
         
 
 
