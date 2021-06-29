@@ -277,19 +277,6 @@ class Expr_Let(Cool_expr):
 
 class Expr_Case(Cool_expr):
     class CaseElement(Cool_expr):
-        def typeCheck(self, env):
-            env = env.copy()
-            vname = self.name.get_name()
-            vtype = self.ctype.get_name()
-            expr  = self.expr
-            if vname == "self":
-                error(  self.name.line,
-                        "binding self in a case expression is not allowed")
-            if vtype == "SELF_TYPE":
-                error(  self.ctype.line,
-                        "using SELF_TYPE as a case branch type is not allowed")
-            env.add_var(vname, Cool_type(vtype))
-            return expr.flush_types(env)
         def __init__(self, name, ctype, expr):
             self.name = name
             self.ctype= ctype

@@ -1,6 +1,7 @@
+from helper import error
 from helper import read_lst
 from env import *
-from cool_expr import *
+from Cool_expr import *
 import sys
 
 
@@ -92,6 +93,7 @@ class Evaluator():
         decorated_eval = tail_recursive(Evaluator.eval)
 
         return decorated_eval(self, Cool_void(), Store(), Env(), entry)
+
     
     def eval(self, so, s, e, exp):
         if isinstance(exp, Expr_Assign):
@@ -224,6 +226,14 @@ class Evaluator():
             for expr in exp.exprs:
                 v0 = self.eval(so, s, e, expr)
             return v0
+
+        elif isinstance(exp, Expr_If):
+            v0 = self.eval(so, s, e, exp.predicate)
+            assert isinstance(v0, Cool_bool)
+            if v0.value:
+                raise Recurse(self, so, s, e, exp.bt)
+            else:
+                raise Recurse(self, so, s, e, exp.bf)
         
         elif isinstance(exp, Expr_While):
             predicate = exp.predicate
@@ -242,9 +252,51 @@ class Evaluator():
             else:
                 return Cool_bool(False)
 
-        elif isinstance(exp, Lt):
-           # TODO: resume here
+        elif isinstance(exp, Expr_Cmp):
+            v_lhs = self.eval(so, s, e, exp.lhs)
+            v_rhs = self.eval(so, s, e, exp.rhs)
+            op  = exp.op
+            if op == "lt":
+                return Cool_bool(v_lhs.value < v_rhs.value)
+            elif op == "le":
+                return Cool_bool(v_lhs.value <= v_rhs.value)
+            else:
+                error("0", "CMP MISS MATHCING")
+
+        elif isinstance(exp, Expr_Equal):
+            v_lhs = self.eval(so, s, e, exp.lhs)
+            v_rhs = self.eval(so, s, e, exp.rhs)
+            return Cool_bool(v_lhs.value == v_rhs.value)
+
+        elif isinstance(exp, Expr_Not):
+            v0 = self.eval(so, s, e, exp.expr)
+            return Cool_bool(not v0.value)
         
+        elif isinstance(exp, Expr_Negate):
+            v0 = self.eval(so, s, e, exp.expr)
+            return Cool_int( -v0.value )
+        
+        elif isinstance(exp, Expr_Let):
+            e = e.copy()
+            bindings = exp.bindings
+            ebody    = exp.body
+            for b in bindings:
+                name= b.name
+                loc = self.s.malloc()
+                type= b.btype
+                init= b.expr
+                if init:
+                    init_val = self.eval(so, s, e, init)
+                else:
+                    init_val = Cool_value.init_for(type)
+                e[name] = loc
+                self.s.set(loc, init_val)
+            raise Recurse(self, so, s, e, ebody)
+
+        elif isinstance(exp, Expr_Case):
+           # TODO: resume here 
+
+
 
 
 
@@ -253,6 +305,10 @@ if __name__ == "__main__":
     prog.read()
     e = Evaluator(prog)
     # e.eval(None, "", {}, Expr_New("",Cool_Id("B")) )
+
+    decorated_eval = tail_recursive(Evaluator.eval)
+
+    c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
     r = e.run()
 
     print("DONE")

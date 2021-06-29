@@ -7,6 +7,6 @@ class B inherits Main{
 
 };
 class Main{
-    fu(a:Int):Int{6789};
+    fu(a:Int):Int{let a:Int, a:Int in 0};
     main():Int{fu(100)};
 };
