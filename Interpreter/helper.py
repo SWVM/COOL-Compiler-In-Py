@@ -1,6 +1,9 @@
 
 from os import name
 
+def error(line, msg):
+    print("ERROR: %s: Exception: %s" % (line, msg))
+    exit(1)
 
 def read_lst(func, fin):
     length = int(fin.readline())

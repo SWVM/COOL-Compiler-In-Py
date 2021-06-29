@@ -7,7 +7,7 @@ class Cool_Id():
         name = fin.readline()[:-1]
         return Cool_Id(name, line)
 
-    def __init__(self, name, line):
+    def __init__(self, name, line = ""):
         self.name = name
         self.line = line
 
@@ -213,7 +213,7 @@ class Expr_Integer(Cool_expr):
         self.int_value = int_value
         super().__init__(line)
     def read(fin, **kwargs):
-        int_value = fin.readline()[:-1]
+        int_value = int(fin.readline()[:-1])
         return Expr_Integer(kwargs["line"], int_value)
 
 class Expr_String(Cool_expr):
