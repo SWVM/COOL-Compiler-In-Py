@@ -52,6 +52,17 @@ class Cool_Prog():
     def get_mbody(self, cname, mname):
         return self.imap[ (cname, mname) ].body
 
+    def dist(self, tname, btype):
+        current = btype
+        count = 0 
+        while current != tname:
+            try:
+                current = self.pmap[current]
+                count += 1
+            except:
+                return -1
+        return count
+
 
 
 
@@ -92,7 +103,7 @@ class Evaluator():
         entry = Expr_DDispatch("", Expr_New("",Cool_Id("Main")), Cool_Id("main"), [])
         decorated_eval = tail_recursive(Evaluator.eval)
 
-        return decorated_eval(self, Cool_void(), Store(), Env(), entry)
+        return decorated_eval(self, Cool_void(), Store(), {}, entry)
 
     
     def eval(self, so, s, e, exp):
@@ -184,8 +195,8 @@ class Evaluator():
             args_locs = {arg:loc for arg,loc in zip(formals, locs)}
             self.s.update( {loc:val for loc,val in zip(locs, arg_vals)} )
             # get object env
-            attri_locs = v0.get_attris().copy()
-            new_e = attri_locs.update(args_locs)
+            new_e = v0.get_attris().copy()
+            new_e.update(args_locs)
             raise Recurse(self, v0, s, new_e, body)
 
         elif isinstance(exp, Expr_SDispatch):
@@ -209,8 +220,8 @@ class Evaluator():
             args_locs = {arg:loc for arg,loc in zip(formals, locs)}
             self.s.update( {loc:val for loc,val in zip(locs, arg_vals)} )
             # get object env
-            attri_locs = v0.get_attris().copy()
-            new_e = attri_locs.update(args_locs)
+            new_e = v0.get_attris().copy()
+            new_e.update(args_locs)
             raise Recurse(self, v0, s, new_e, body)
 
         elif isinstance(exp, Expr_SelfDispatch):
@@ -294,7 +305,58 @@ class Evaluator():
             raise Recurse(self, so, s, e, ebody)
 
         elif isinstance(exp, Expr_Case):
-           # TODO: resume here 
+            e = e.copy()
+            v0 = self.eval(so, s, e, exp.expr)
+            branches = exp.elements
+            vt = v0.get_type()
+            if isinstance(v0, Cool_void):
+               error(exp.line, "case on void")
+            branches = [ (self.prog.dist(b.get_type(), vt), b ) for b in branches ]
+            branches = sorted([ b for b in branches if b[0] > -1])
+            if not branches:
+                error(exp.line, "case without matching branch %s(...)" % vt)
+            matched = branches[0][1]
+            
+            loc = self.s.malloc()
+            e[matched.get_name()] = loc
+            self.s.set(loc, v0)
+
+            raise Recurse(self, so, s, e, matched.expr)
+
+        elif isinstance(exp, Expr_Internal):
+            if exp.details == "IO.in_int":
+                try:
+                    return Cool_int( int(input))
+                except:
+                    return Cool_int()
+            elif exp.details == "IO.in_string":
+                str = input()
+                if "\0" in str or "":
+                    return Cool_string()
+                return Cool_string(str)
+            elif exp.details == "IO.out_int":
+                arg = self.s[ e["x"] ]
+                exit(1)
+                print(arg.value)
+            elif exp.details == "IO.out_string":
+                arg = self.s[ e["x"] ]
+                exit(1)
+                print(arg.value)
+            elif exp.details == "Object.abort":
+                pass
+            elif exp.details == "Object.copy":
+                pass
+            elif exp.details == "Object.type_name":
+                pass
+            elif exp.details == "String.concat":
+                pass
+            elif exp.details == "String.length":
+                pass
+            elif exp.details == "String.substr":
+                pass
+            else:
+                error("","UNKNOWN INTERNAL") 
+                
 
 
 
@@ -305,11 +367,10 @@ if __name__ == "__main__":
     prog.read()
     e = Evaluator(prog)
     # e.eval(None, "", {}, Expr_New("",Cool_Id("B")) )
-
-    decorated_eval = tail_recursive(Evaluator.eval)
-
-    c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
+    # decorated_eval = tail_recursive(Evaluator.eval)
+    # c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
     r = e.run()
+    print(prog.dist("Main", "B"))
 
     print("DONE")
     

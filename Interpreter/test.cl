@@ -8,5 +8,5 @@ class B inherits Main{
 };
 class Main{
     fu(a:Int):Int{let a:Int, a:Int in 0};
-    main():Int{fu(100)};
+    main():Object{{new IO.out_int(new IO.in_string().length());new IO.out_string("haha\tsda\n??");}};
 };

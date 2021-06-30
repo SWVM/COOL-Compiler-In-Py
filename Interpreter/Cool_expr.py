@@ -286,6 +286,10 @@ class Expr_Case(Cool_expr):
             vtype   = Cool_Id.read(fin)
             body    = Cool_expr.read(fin)
             return Expr_Case.CaseElement(var, vtype, body)
+        def get_type(self):
+            return self.ctype.name
+        def get_name(self):
+            return self.name.name
         def __str__(self):
             return "%s%s%s" % (self.name, self.ctype, self.expr)
     def __init__(self, line, expr, elements):
