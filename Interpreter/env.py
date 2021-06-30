@@ -1,3 +1,4 @@
+from copy import deepcopy
 class Store():
     MALLOC_COUNTER = 10000
     def __init__(self):
@@ -48,6 +49,8 @@ class Cool_value():
             return self.value
         else:
             return {}
+    def copy(self):
+        deepcopy(self)
 
 class Cool_int(Cool_value):
     def __init__(self, value = 0):

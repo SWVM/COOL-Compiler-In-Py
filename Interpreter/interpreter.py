@@ -344,17 +344,25 @@ class Evaluator():
                         print(arg.value, end="")
                         return so
                     elif exp.details == "Object.abort":
-                        pass
+                        print("abort\n", end="")
+                        exit(1)
                     elif exp.details == "Object.copy":
-                        pass
+                        return so.copy()
                     elif exp.details == "Object.type_name":
-                        pass
+                        return Cool_string(so.get_type())
                     elif exp.details == "String.concat":
-                        pass
+                        s1 = so
+                        s2 = self.s[ e["s"] ]
+                        return Cool_string(s1.value + s2.value)
                     elif exp.details == "String.length":
-                        return Cool_int()
+                        return Cool_int( len(so.value) )
                     elif exp.details == "String.substr":
-                        pass
+                        try:
+                            i = self.s[ e["i"] ].value
+                            l = self.s[ e["l"] ].value
+                            return Cool_string(so.value[i:i+l])
+                        except:
+                            error(line, "String.substr out of range")
                     else:
                         error("","UNKNOWN INTERNAL")
             except Recurse as r:
@@ -377,7 +385,6 @@ if __name__ == "__main__":
     # decorated_eval = tail_recursive(Evaluator.eval)
     # c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
     r = e.run()
-    print(prog.dist("Main", "B"))
 
     print("DONE")
     
