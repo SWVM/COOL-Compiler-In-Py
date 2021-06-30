@@ -6,7 +6,7 @@ class B inherits Main{
 
 };
 class Main{
-    a:String;
+    a:B;
     fu(a:Int):Int{let a:Int, a:Int in 0};
-    main():Object{{a <- "fajadsijfoiajf".substr(1,2);new IO.out_string(a);}};
+    main():Object{{a@Main.fu(100);new IO.out_string("a");}};
 };

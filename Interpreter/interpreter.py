@@ -102,17 +102,17 @@ class Evaluator():
     def run(self):
         entry = Expr_DDispatch("", Expr_New("",Cool_Id("Main")), Cool_Id("main"), [])
 
-        return self.eval(Cool_void(), Store(), {}, entry)
+        return self.eval(Cool_void(), {}, entry)
 
     
-    def eval(self, so, s, e, exp):
+    def eval(self, so, e, exp):
         while True:
             try:
                 if isinstance(exp, Expr_Assign):
                     var = exp.var.name
                     loc = e[var]
                     rhs = exp.expr
-                    val = self.eval(so, s, e, rhs)
+                    val = self.eval(so, e, rhs)
                     self.s.set(loc, val)
                     return val
 
@@ -133,8 +133,8 @@ class Evaluator():
                         return self.s[ e[name] ]
 
                 elif isinstance(exp, Expr_Arith):
-                    v1 = self.eval(so, s, e, exp.e1)
-                    v2 = self.eval(so, s, e, exp.e2)
+                    v1 = self.eval(so, e, exp.e1)
+                    v2 = self.eval(so, e, exp.e2)
                     # TODO: how to do puls? 
                     if exp.op == "plus":
                         return v1+v2
@@ -143,6 +143,8 @@ class Evaluator():
                     elif exp.op == "minus":
                         return v1-v2
                     elif exp.op == "divide":
+                        if v2 == 0:
+                            error(exp.line, "division by zero")
                         return v1/v2
 
                 elif isinstance(exp, Expr_New):
@@ -172,7 +174,7 @@ class Evaluator():
                     # evaluate init
                     for var,init in zip(anames, ainits):
                         if init:
-                            self.eval(v1, s, name_loc, Expr_Assign("", Cool_Id(var), init))
+                            self.eval(v1, name_loc, Expr_Assign("", Cool_Id(var), init))
                     # raise? maybe not
                     return v1
 
@@ -182,9 +184,9 @@ class Evaluator():
                     mname     = exp.method.name
                     arg_exprs = exp.args
                     # eval args
-                    arg_vals  = [ self.eval(so, s, e, arg_e) for arg_e in arg_exprs ]
+                    arg_vals  = [ self.eval(so, e, arg_e) for arg_e in arg_exprs ]
                     # eval expr/so
-                    v0 = self.eval(so, s, e, expr)
+                    v0 = self.eval(so, e, expr)
                     cname = v0.get_type()
                     if cname == "void":
                         error(line, "dispatch on void")
@@ -198,7 +200,7 @@ class Evaluator():
                     # get object env
                     new_e = v0.get_attris().copy()
                     new_e.update(args_locs)
-                    raise Recurse(v0, s, new_e, body)
+                    raise Recurse(v0, new_e, body)
 
                 elif isinstance(exp, Expr_SDispatch):
                     line      = exp.line
@@ -207,12 +209,12 @@ class Evaluator():
                     mname     = exp.method.name
                     arg_exprs = exp.args
                     # eval args
-                    arg_vals  = [ self.eval(so, s, e, arg_e) for arg_e in arg_exprs ]
+                    arg_vals  = [ self.eval(so, e, arg_e) for arg_e in arg_exprs ]
                     # eval expr/so
-                    v0 = self.eval(so, s, e, expr)
+                    v0 = self.eval(so, e, expr)
                     cname = v0.get_type()
                     if cname == "void":
-                        error(line, "dispatch on void")
+                        error(line, "static dispatch on void")
                     # get method
                     formals = self.prog.get_formals(target, mname)
                     locs    = [self.s.malloc() for f in formals]
@@ -223,7 +225,7 @@ class Evaluator():
                     # get object env
                     new_e = v0.get_attris().copy()
                     new_e.update(args_locs)
-                    raise Recurse(v0, s, new_e, body)
+                    raise Recurse(v0, new_e, body)
 
                 elif isinstance(exp, Expr_SelfDispatch):
                     line = exp.line
@@ -231,42 +233,42 @@ class Evaluator():
                     mname= exp.method
                     args = exp.args
                     Expr_DDispatch(line, expr, mname, args)
-                    raise Recurse(so, s, e, Expr_DDispatch(line, expr, mname, args))
+                    raise Recurse(so, e, Expr_DDispatch(line, expr, mname, args))
 
                 elif isinstance(exp, Expr_Block):
                     v0 = None
                     for expr in exp.exprs:
-                        v0 = self.eval(so, s, e, expr)
+                        v0 = self.eval(so, e, expr)
                     return v0
 
                 elif isinstance(exp, Expr_If):
-                    v0 = self.eval(so, s, e, exp.predicate)
+                    v0 = self.eval(so, e, exp.predicate)
                     assert isinstance(v0, Cool_bool)
                     if v0.value:
-                        raise Recurse(so, s, e, exp.bt)
+                        raise Recurse(so, e, exp.bt)
                     else:
-                        raise Recurse(so, s, e, exp.bf)
+                        raise Recurse(so, e, exp.bf)
                 
                 elif isinstance(exp, Expr_While):
                     predicate = exp.predicate
                     body      = exp.body
-                    val = self.eval(so, s, e, predicate)
+                    val = self.eval(so, e, predicate)
                     if val.value:
-                        self.eval(so, s, e, body)
-                        raise Recurse(so, s, e, exp)
+                        self.eval(so, e, body)
+                        raise Recurse(so, e, exp)
                     else:
                         return Cool_void()
 
                 elif isinstance(exp, Expr_Isvoid):
-                    v0 = self.eval(so, s, e, exp)
+                    v0 = self.eval(so, e, exp)
                     if isinstance(v0, Cool_void):
                         return Cool_bool(True)
                     else:
                         return Cool_bool(False)
 
                 elif isinstance(exp, Expr_Cmp):
-                    v_lhs = self.eval(so, s, e, exp.lhs)
-                    v_rhs = self.eval(so, s, e, exp.rhs)
+                    v_lhs = self.eval(so, e, exp.lhs)
+                    v_rhs = self.eval(so, e, exp.rhs)
                     op  = exp.op
                     if op == "lt":
                         return Cool_bool(v_lhs.value < v_rhs.value)
@@ -276,16 +278,16 @@ class Evaluator():
                         error("0", "CMP MISS MATHCING")
 
                 elif isinstance(exp, Expr_Equal):
-                    v_lhs = self.eval(so, s, e, exp.lhs)
-                    v_rhs = self.eval(so, s, e, exp.rhs)
+                    v_lhs = self.eval(so, e, exp.lhs)
+                    v_rhs = self.eval(so, e, exp.rhs)
                     return Cool_bool(v_lhs.value == v_rhs.value)
 
                 elif isinstance(exp, Expr_Not):
-                    v0 = self.eval(so, s, e, exp.expr)
+                    v0 = self.eval(so, e, exp.expr)
                     return Cool_bool(not v0.value)
                 
                 elif isinstance(exp, Expr_Negate):
-                    v0 = self.eval(so, s, e, exp.expr)
+                    v0 = self.eval(so, e, exp.expr)
                     return Cool_int( -v0.value )
                 
                 elif isinstance(exp, Expr_Let):
@@ -298,16 +300,16 @@ class Evaluator():
                         type= b.btype
                         init= b.expr
                         if init:
-                            init_val = self.eval(so, s, e, init)
+                            init_val = self.eval(so, e, init)
                         else:
                             init_val = Cool_value.init_for(type)
                         e[name] = loc
                         self.s.set(loc, init_val)
-                    raise Recurse(so, s, e, ebody)
+                    raise Recurse(so, e, ebody)
 
                 elif isinstance(exp, Expr_Case):
                     e = e.copy()
-                    v0 = self.eval(so, s, e, exp.expr)
+                    v0 = self.eval(so, e, exp.expr)
                     branches = exp.elements
                     vt = v0.get_type()
                     if isinstance(v0, Cool_void):
@@ -322,7 +324,7 @@ class Evaluator():
                     e[matched.get_name()] = loc
                     self.s.set(loc, v0)
 
-                    raise Recurse(so, s, e, matched.expr)
+                    raise Recurse(so, e, matched.expr)
 
                 elif isinstance(exp, Expr_Internal):
                     if exp.details == "IO.in_int":
@@ -365,9 +367,9 @@ class Evaluator():
                             error(line, "String.substr out of range")
                     else:
                         error("","UNKNOWN INTERNAL")
+                return ret
             except Recurse as r:
                 so = r.so
-                s  = r.s
                 e  = r.e
                 exp= r.exp
                 continue

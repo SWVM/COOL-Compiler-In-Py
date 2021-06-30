@@ -42,6 +42,12 @@ class Cool_value():
     def __init__(self, type, value):
         self.type = type
         self.value= value
+    def __eq__(self, o):
+        return self.value == o.value
+    def __lt__(self, o):
+        return self.value < o.value
+    def __le__(self, o):
+        return self.value <= o.value
     def get_type(self):
         return self.type
     def get_attris(self):

@@ -12,9 +12,8 @@ def read_lst(func, fin):
     return lst
 
 class Recurse(Exception):
-    def __init__(self, so, s, e, exp):
+    def __init__(self, so, e, exp):
         self.so = so
-        self.s  = s
         self.e  = e
         self.exp= exp
 
