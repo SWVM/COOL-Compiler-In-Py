@@ -12,9 +12,11 @@ def read_lst(func, fin):
     return lst
 
 class Recurse(Exception):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+    def __init__(self, so, s, e, exp):
+        self.so = so
+        self.s  = s
+        self.e  = e
+        self.exp= exp
 
 def tail_recursive(f):
     def decorated(*args, **kwargs):
