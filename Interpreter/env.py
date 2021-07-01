@@ -56,19 +56,19 @@ class Cool_value():
         else:
             return {}
     def copy(self):
-        deepcopy(self)
+        return deepcopy(self)
 
 class Cool_int(Cool_value):
     def __init__(self, value = 0):
-        super().__init__("Int", value)
+        super().__init__("Int", int(value))
     def __add__(self, o):
-        return self.value + o.value
+        return Cool_int(self.value + o.value)
     def __mul__(self, o):
-        return self.value * o.value
+        return Cool_int(self.value * o.value)
     def __truediv__(self, o):
-        return self.value / o.value
+        return Cool_int(self.value / o.value)
     def __sub__(self, o):
-        return self.value - o.value
+        return Cool_int(self.value - o.value)
 
 class Cool_string(Cool_value):
     def __init__(self, value = ""):

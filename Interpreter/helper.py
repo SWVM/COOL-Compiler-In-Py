@@ -1,4 +1,5 @@
 from os import name
+import re
 
 def error(line, msg):
     print("ERROR: %s: Exception: %s" % (line, msg))
@@ -10,6 +11,10 @@ def read_lst(func, fin):
     for i in range(length):
         lst.append(func(fin))
     return lst
+
+def trim_int(str):
+    return int(re.search("-?[0-9]{0,10}",str.strip()).group())
+
 
 class Recurse(Exception):
     def __init__(self, so, e, exp):

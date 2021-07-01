@@ -4,6 +4,7 @@ from env import *
 from Cool_expr import *
 import sys
 
+sys.setrecursionlimit(99999)
 
 class Cool_Prog():
     def __init__(self, fname):
@@ -120,7 +121,8 @@ class Evaluator():
                     return Cool_int(exp.int_value)
 
                 elif isinstance(exp, Expr_String):
-                    return Cool_string(exp.str_value)
+                    str = exp.str_value
+                    return Cool_string(str.replace("\\n", "\n").replace("\\t", "\t"))
 
                 elif isinstance(exp, Expr_Bool):
                     return Cool_bool(exp.bool_value)
@@ -143,7 +145,7 @@ class Evaluator():
                     elif exp.op == "minus":
                         return v1-v2
                     elif exp.op == "divide":
-                        if v2 == 0:
+                        if v2 == Cool_int(0):
                             error(exp.line, "division by zero")
                         return v1/v2
 
@@ -295,9 +297,9 @@ class Evaluator():
                     bindings = exp.bindings
                     ebody    = exp.body
                     for b in bindings:
-                        name= b.name
+                        name= b.get_name()
                         loc = self.s.malloc()
-                        type= b.btype
+                        type= b.get_type()
                         init= b.expr
                         if init:
                             init_val = self.eval(so, e, init)
@@ -317,7 +319,7 @@ class Evaluator():
                     branches = [ (self.prog.dist(b.get_type(), vt), b ) for b in branches ]
                     branches = sorted([ b for b in branches if b[0] > -1])
                     if not branches:
-                        error(exp.line, "case without matching branch %s(...)" % vt)
+                        error(exp.line, "case without matching branch: %s(...)" % vt)
                     matched = branches[0][1]
                     
                     loc = self.s.malloc()
@@ -329,13 +331,14 @@ class Evaluator():
                 elif isinstance(exp, Expr_Internal):
                     if exp.details == "IO.in_int":
                         try:
-                            return Cool_int( int(input))
+                            return Cool_int( trim_int(input()))
                         except:
                             return Cool_int()
                     elif exp.details == "IO.in_string":
                         str = input()
                         if "\0" in str or "":
                             return Cool_string()
+                        str = str.replace("\\n", "\n").replace("\\t", "\t")
                         return Cool_string(str)
                     elif exp.details == "IO.out_int":
                         arg = self.s[ e["x"] ]
@@ -360,14 +363,15 @@ class Evaluator():
                         return Cool_int( len(so.value) )
                     elif exp.details == "String.substr":
                         try:
+                            str = so.value
                             i = self.s[ e["i"] ].value
                             l = self.s[ e["l"] ].value
-                            return Cool_string(so.value[i:i+l])
+                            assert i<len(str) and (i+l)<len(str)
+                            return Cool_string(str[i:i+l])
                         except:
-                            error(line, "String.substr out of range")
+                            error("0", "String.substr out of range")
                     else:
                         error("","UNKNOWN INTERNAL")
-                return ret
             except Recurse as r:
                 so = r.so
                 e  = r.e
@@ -380,7 +384,8 @@ class Evaluator():
 
 
 if __name__ == "__main__":
-    prog = Cool_Prog("D:\\SysDir\\Documents\\COOL-Compiler-In-Py\\Interpreter\\test.cl-type")
+    # prog = Cool_Prog("D:\\SysDir\\Documents\\COOL-Compiler-In-Py\Interpreter\\test_cases\\bad\\substring-bad.cl-type")
+    prog = Cool_Prog(sys.argv[1])
     prog.read()
     e = Evaluator(prog)
     # e.eval(None, "", {}, Expr_New("",Cool_Id("B")) )
@@ -388,5 +393,4 @@ if __name__ == "__main__":
     # c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
     r = e.run()
 
-    print("DONE")
     

@@ -256,9 +256,9 @@ class Expr_Let(Cool_expr):
                 # LET error line number
             return Expr_Let.Binding(name, btype, init)
         def get_name(self):
-            return self.name.get_name()
+            return self.name.name
         def get_type(self):
-            return self.btype.get_name()
+            return self.btype.name
         def get_expr(self):
             return self.expr
         def __str__(self):
