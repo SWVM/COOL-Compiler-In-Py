@@ -4,7 +4,7 @@ from env import *
 from Cool_expr import *
 import sys
 
-sys.setrecursionlimit(99999)
+# sys.setrecursionlimit(99999)
 
 class Cool_Prog():
     def __init__(self, fname):
@@ -150,7 +150,6 @@ class Evaluator():
                         return v1/v2
 
                 elif isinstance(exp, Expr_New):
-                    # inc stack dpeth? idk
                     cname = exp.tname.name
                     if cname == "SELF_TYPE":
                         cname = so.get_type()
@@ -177,7 +176,6 @@ class Evaluator():
                     for var,init in zip(anames, ainits):
                         if init:
                             self.eval(v1, name_loc, Expr_Assign("", Cool_Id(var), init))
-                    # raise? maybe not
                     return v1
 
                 elif isinstance(exp, Expr_DDispatch):
