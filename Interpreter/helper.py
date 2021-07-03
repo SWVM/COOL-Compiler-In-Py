@@ -1,5 +1,6 @@
 from os import name
 import re
+from numpy import int32
 
 def error(line, msg):
     print("ERROR: %s: Exception: %s" % (line, msg))
@@ -12,8 +13,12 @@ def read_lst(func, fin):
         lst.append(func(fin))
     return lst
 
-def trim_int(str):
-    return int(re.search("-?[0-9]{0,10}",str.strip()).group())
+def read_int_32():
+    try:
+        str = input().strip()
+        return int32(re.search("-?[0-9]{0,10}",str).group())
+    except:
+        return int32(0)
 
 
 class Recurse(Exception):

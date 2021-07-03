@@ -1,4 +1,6 @@
 from copy import deepcopy
+from numpy import int32
+
 class Store():
     MALLOC_COUNTER = 10000
     def __init__(self):
@@ -59,16 +61,21 @@ class Cool_value():
         return deepcopy(self)
 
 class Cool_int(Cool_value):
-    def __init__(self, value = 0):
-        super().__init__("Int", int(value))
+    def __init__(self, value = int32(0)):
+        if isinstance(value, int):
+            try:
+                value = int32(value)
+            except:
+                value = int32(0)
+        super().__init__("Int", value)
     def __add__(self, o):
-        return Cool_int(self.value + o.value)
+        return Cool_int( int32(self.value + o.value) )
     def __mul__(self, o):
-        return Cool_int(self.value * o.value)
+        return Cool_int( int32(self.value * o.value) )
     def __truediv__(self, o):
-        return Cool_int(self.value / o.value)
+        return Cool_int( int32(self.value / o.value) )
     def __sub__(self, o):
-        return Cool_int(self.value - o.value)
+        return Cool_int( int32(self.value - o.value))
 
 class Cool_string(Cool_value):
     def __init__(self, value = ""):

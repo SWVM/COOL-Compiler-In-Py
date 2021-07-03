@@ -4,7 +4,7 @@ from env import *
 from Cool_expr import *
 import sys
 
-# sys.setrecursionlimit(99999)
+sys.setrecursionlimit(99999)
 
 class Cool_Prog():
     def __init__(self, fname):
@@ -25,7 +25,6 @@ class Cool_Prog():
         for i in range(class_num):
             cname = self.fin.readline()[:-1]
             self.cmap[cname] = read_lst(Cool_attri.read, self.fin)
-        # TODO: class map
     def read_imp_map(self):
         assert self.fin.readline() == "implementation_map\n"
         class_num = int(self.fin.readline())
@@ -34,15 +33,12 @@ class Cool_Prog():
             methods = read_lst(Cool_method.read, self.fin)
             for m in methods:
                 self.imap[ (cname, m.name) ] = m
-            # self.imap[cname] = read_lst(Cool_method.read, self.fin)
-        # TODO: imp map
     def read_parent_map(self):
         assert self.fin.readline() == "parent_map\n"
         class_num = int(self.fin.readline())
         for i in range(class_num):
             cname = self.fin.readline()[:-1]
             self.pmap[cname] = self.fin.readline()[:-1]
-        # TODO: parent map
 
     def get_attris(self, cname):
         return self.cmap[cname]
@@ -99,6 +95,15 @@ class Evaluator():
     def __init__(self, prog):
         self.prog = prog
         self.s    = Store()
+        self.call_stack = 0
+
+    def push(self, line):
+        if self.call_stack > 1000:
+            error(line, "stack overflow")
+        self.call_stack += 1
+
+    def pop(self):
+        self.call_stack -= 1
     
     def run(self):
         entry = Expr_DDispatch("", Expr_New("",Cool_Id("Main")), Cool_Id("main"), [])
@@ -137,7 +142,6 @@ class Evaluator():
                 elif isinstance(exp, Expr_Arith):
                     v1 = self.eval(so, e, exp.e1)
                     v2 = self.eval(so, e, exp.e2)
-                    # TODO: how to do puls? 
                     if exp.op == "plus":
                         return v1+v2
                     elif exp.op == "times":
@@ -150,6 +154,7 @@ class Evaluator():
                         return v1/v2
 
                 elif isinstance(exp, Expr_New):
+                    self.push(exp.line)
                     cname = exp.tname.name
                     if cname == "SELF_TYPE":
                         cname = so.get_type()
@@ -176,9 +181,11 @@ class Evaluator():
                     for var,init in zip(anames, ainits):
                         if init:
                             self.eval(v1, name_loc, Expr_Assign("", Cool_Id(var), init))
+                    self.pop()
                     return v1
 
                 elif isinstance(exp, Expr_DDispatch):
+                    self.push(exp.line)
                     line      = exp.line
                     expr      = exp.expr
                     mname     = exp.method.name
@@ -200,9 +207,12 @@ class Evaluator():
                     # get object env
                     new_e = v0.get_attris().copy()
                     new_e.update(args_locs)
-                    raise Recurse(v0, new_e, body)
+                    val = self.eval(v0, new_e, body)
+                    self.pop()
+                    return val
 
                 elif isinstance(exp, Expr_SDispatch):
+                    self.push(exp.line)
                     line      = exp.line
                     expr      = exp.expr
                     target    = exp.target.name
@@ -225,7 +235,9 @@ class Evaluator():
                     # get object env
                     new_e = v0.get_attris().copy()
                     new_e.update(args_locs)
-                    raise Recurse(v0, new_e, body)
+                    val = self.eval(v0, new_e, body)
+                    self.pop()
+                    return val
 
                 elif isinstance(exp, Expr_SelfDispatch):
                     line = exp.line
@@ -233,7 +245,7 @@ class Evaluator():
                     mname= exp.method
                     args = exp.args
                     Expr_DDispatch(line, expr, mname, args)
-                    raise Recurse(so, e, Expr_DDispatch(line, expr, mname, args))
+                    return self.eval(so, e, Expr_DDispatch(line, expr, mname, args))
 
                 elif isinstance(exp, Expr_Block):
                     v0 = None
@@ -328,10 +340,7 @@ class Evaluator():
 
                 elif isinstance(exp, Expr_Internal):
                     if exp.details == "IO.in_int":
-                        try:
-                            return Cool_int( trim_int(input()))
-                        except:
-                            return Cool_int()
+                        return Cool_int( read_int_32() )
                     elif exp.details == "IO.in_string":
                         str = input()
                         if "\0" in str or "":
@@ -364,7 +373,7 @@ class Evaluator():
                             str = so.value
                             i = self.s[ e["i"] ].value
                             l = self.s[ e["l"] ].value
-                            assert i<len(str) and (i+l)<len(str)
+                            assert i<=len(str) and (i+l)<=len(str)
                             return Cool_string(str[i:i+l])
                         except:
                             error("0", "String.substr out of range")
@@ -382,13 +391,10 @@ class Evaluator():
 
 
 if __name__ == "__main__":
-    # prog = Cool_Prog("D:\\SysDir\\Documents\\COOL-Compiler-In-Py\Interpreter\\test_cases\\bad\\substring-bad.cl-type")
+    # prog = Cool_Prog("D:\\SysDir\\Documents\\COOL-Compiler-In-Py\Interpreter\\test_cases\\good\\primes.cl-type")
     prog = Cool_Prog(sys.argv[1])
     prog.read()
     e = Evaluator(prog)
-    # e.eval(None, "", {}, Expr_New("",Cool_Id("B")) )
-    # decorated_eval = tail_recursive(Evaluator.eval)
-    # c = decorated_eval(e, None, "", {}, Expr_If("", Expr_Bool("","false"), Expr_Integer("", 9), Expr_String("","fjuiwe")) )
     r = e.run()
 
     
