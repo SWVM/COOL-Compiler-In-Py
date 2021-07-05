@@ -5,4 +5,5 @@
 
 
 ## known issues
-- not implemented yet
+- has issue with recursive calls as Python has its stack depth capped at 1000
+- might be fixed later
