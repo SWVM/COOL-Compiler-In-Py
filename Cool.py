@@ -16,6 +16,12 @@ arg_parser.add_argument("--imp-map", action="store_true",
 arg_parser.add_argument("--parent-map", action="store_true",
                         help="emit cl-type file(classes & inheritance)")
 
+# args = arg_parser.parse_args()
+args = arg_parser.parse_args( ["--lex","--lex","--lex","fasd"] )
+fname= args.input_file[0]
+# args.lex
 
-print(arg_parser.parse_args( ["--lex"] ))
+
+
+print(args)
 
