@@ -359,8 +359,9 @@ class AST_Printer():
         self.out_buffer = StringIO()
         self.print_lst(self.print_class, ast)
 
-    def get_str(self):
-        return self.out_buffer.getvalue()
+    def get_buff(self):
+        self.out_buffer.seek(0)
+        return self.out_buffer
 
     def print_lst(self, func, lst):
         self.out_buffer.write(str(len(lst)))
@@ -493,15 +494,15 @@ class AST_Printer():
         self.print_lst(self.print_feature, cl[3])
 
 class CL_LEX_tokenizer():
-    def __init__(self, fname):
-        self.fname      = fname
+    def __init__(self, inStream):
+        self.inStream = inStream
         self.tokens = []
         self.read_tokens()
 
 
     # ugly code that works for valid .cl-lex file
     def read_tokens(self):
-        fin = open(self.fname, "r")
+        fin = self.inStream
 
         while True:
             tok = LexToken()
@@ -529,14 +530,21 @@ class CL_LEX_tokenizer():
             return self.tokens[self.ptr]
 
 
+def get_ast_stream(inStream):
+    lexer = CL_LEX_tokenizer(inStream)
+    ast = parser.parse(lexer=lexer)
+    out_buffer = AST_Printer(ast).get_buff()
+    out_buffer.seek(0)
+    return out_buffer
+
 if __name__ == '__main__':
     import sys
     input_file_name = sys.argv[1]
     out_file_name = input_file_name[:-3] + "ast-test"
 
-    lexer = CL_LEX_tokenizer(input_file_name)
-    ast = parser.parse(lexer=lexer)
+    inputStream = open(input_file_name, "r")
+    ast_buff = get_ast_stream(inputStream)
 
     f_out = open(out_file_name, "w")
-    f_out.write(AST_Printer(ast).get_str())
+    f_out.write(ast_buff.getvalue())
     f_out.close()

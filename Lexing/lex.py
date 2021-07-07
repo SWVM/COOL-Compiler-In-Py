@@ -219,14 +219,9 @@ def t_error(t):
 ####################  END   OF RULES   ############## ###############
 ####################  END   OF RULES   ############## ###############
 
-
-
-if __name__ == '__main__':
-    import sys
-    file_path = sys.argv[1]
+def get_toks_stream(inStream):
     lex.lex()
-    lex.input(open(file_path, "r").read())
-
+    lex.input(inStream.read())
     out_buffer = StringIO()
     for tok in iter(lex.token, None):
         if      tok.type == "COMMENT":
@@ -279,6 +274,16 @@ if __name__ == '__main__':
 
             out_buffer.write(KEY_WORDS_HASH[tok.value])
             out_buffer.write('\n')
+    out_buffer.seek(0)
+    return out_buffer
+
+
+
+
+if __name__ == '__main__':
+    import sys
+    file_path = sys.argv[1]
+    out_buffer = get_toks_stream(file_path)
 
     f = open(sys.argv[1]+"-lex-test", "w")
     f.write(out_buffer.getvalue())
