@@ -8,12 +8,12 @@ class Cool_prog():
     ###
     # initializer and helper codes
     ###
-    def __init__(self, fname):
+    def __init__(self, inStream):
         self.inheritance = Pedigree()
         self.classes = {}
 
-        fin = open(fname, "r")
-        self.user_cls = read_lst(Cool_class.read, fin)
+        fin = inStream
+        self.user_cls = read_lst(Cool_class.read, inStream)
         cls = [OBJECT, STRING, INT, BOOL, IO] + self.user_cls
         for c in cls:
             self.add_class(c)
@@ -47,8 +47,7 @@ class Cool_prog():
                     "inheritance cycle: %s" % (cycle))
         self.check_main()
 
-    def tc_class_map(self):
-        buffer = StringIO()
+    def tc_class_map(self, buffer = StringIO()):
         buffer.write("class_map\n")
         buffer.write( "%d\n" % len(self.classes) )
         for c in sorted(self.classes.keys()):
@@ -56,8 +55,7 @@ class Cool_prog():
             buffer.write(s)
         return buffer.getvalue()
 
-    def tc_imp_map(self):
-        buffer = StringIO()
+    def tc_imp_map(self, buffer = StringIO()):
         buffer.write("implementation_map\n")
         buffer.write( "%d\n" % len(self.classes) )
         for c in sorted(self.classes.keys()):
@@ -65,8 +63,7 @@ class Cool_prog():
             buffer.write(s)
         return buffer.getvalue()
 
-    def tc_parent_map(self):
-        buffer = StringIO()
+    def tc_parent_map(self, buffer = StringIO()):
         buffer.write("parent_map\n")
         buffer.write( "%d\n" % (len(self.classes)-1) )
         for c in sorted(self.classes.keys()):
@@ -75,8 +72,7 @@ class Cool_prog():
                 buffer.write("%s\n%s\n"  % (cl.get_name(), cl.parent.get_name()) )
         return buffer.getvalue()
 
-    def annotated_AST(self):
-        buffer = StringIO()
+    def annotated_AST(self, buffer = StringIO()):
         buffer.write( "%d\n" % (len(self.user_cls)) )
         for c in self.user_cls:
             buffer.write( c.annotated_AST() )

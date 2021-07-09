@@ -7,8 +7,8 @@ import sys
 sys.setrecursionlimit(99999)
 
 class Cool_Prog():
-    def __init__(self, fname):
-        self.fin = open(fname, "r")
+    def __init__(self, inStream):
+        self.fin = inStream
         self.cmap = {}
         self.imap = {}
         self.pmap = {}
@@ -17,7 +17,6 @@ class Cool_Prog():
         self.read_class_map()
         self.read_imp_map()
         self.read_parent_map()
-        self.fin.close()
 
     def read_class_map(self):
         assert self.fin.readline() == "class_map\n"
@@ -386,15 +385,19 @@ class Evaluator():
                 continue
                         
 
+def evaluate_cl_type(inStream):
+    prog = Cool_Prog(inStream)
+    prog.read()
+    e = Evaluator(prog)
+    e.run()
 
 
 
 
 if __name__ == "__main__":
     # prog = Cool_Prog("D:\\SysDir\\Documents\\COOL-Compiler-In-Py\Interpreter\\test_cases\\good\\primes.cl-type")
-    prog = Cool_Prog(sys.argv[1])
-    prog.read()
-    e = Evaluator(prog)
-    r = e.run()
+    fin = open(sys.argv[1], "r")
+    evaluate_cl_type(fin)
+    fin.close()
 
     
