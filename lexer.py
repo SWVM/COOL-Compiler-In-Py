@@ -3,7 +3,9 @@
 # Author: Li Linhan
 # Date:   5/22/2021
 # Dependency:
-#     PLY (Python Lex-Yacc)
+#     PLY (Python Lex-Yacc) 
+# Known issue: 
+#       - None
 ##################### ##################### ###############
 
 import ply.lex as lex
@@ -202,7 +204,6 @@ def t_KEY_WORDS(t):
     return t
 
 
-
 def t_INTEGER(t):
     r"\d+"
     int_value = int(t.value)
@@ -276,8 +277,6 @@ def get_toks_stream(inStream):
             out_buffer.write('\n')
     out_buffer.seek(0)
     return out_buffer
-
-
 
 
 if __name__ == '__main__':

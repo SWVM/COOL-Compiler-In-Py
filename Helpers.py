@@ -1,7 +1,10 @@
-from copy import deepcopy, copy
+##################### ##################### ###############
+# helper/util functions.
+##################### ##################### ###############from copy import deepcopy, copy
 from os import name
 import re
 from numpy import int32
+from copy import deepcopy, copy
 
 class Recurse(Exception):
     def __init__(self, so, e, exp):

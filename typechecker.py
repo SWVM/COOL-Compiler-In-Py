@@ -1,9 +1,13 @@
+##################### ##################### ###############
+#                 COOL TYPECHECKER IN PY
+# Author: Li Linhan
+# Date:   6/20/2021
+# Known issue: 
+#       - None
+##################### ##################### ###############
 from io import StringIO
 from Cool_expr import *
 from Helpers import *
-
-
-
 
 
 class Cool_prog():
@@ -17,6 +21,7 @@ class Cool_prog():
         cls = [OBJECT, STRING, INT, BOOL, IO] + self.user_cls
         for c in cls:
             self.add_class(c)
+            
     def add_class(self, c):
         if c.get_name() in self.classes:
             tc_error(  c.get_line(),
@@ -25,11 +30,13 @@ class Cool_prog():
             self.inheritance.add_edge(c.parent.get_name(), c.get_name())
         self.classes[c.get_name()] = c
         c.set_prog(self)
+
     def fetch_class(self, cname):
         try:
             return self.classes[cname.name]
         except:
             raise Exception("class not found: " + str(cname))
+
     def get_method_env(self):
         method_env = {}
         for c in self.classes.values():
@@ -37,9 +44,6 @@ class Cool_prog():
                 method_env[(c.get_name(), m.get_name())] = m
         return method_env
 
-    ###
-    # TypeCheckings
-    ###
     def tc_pre_check(self):
         cycle = self.inheritance.get_cycle()
         if cycle:
@@ -97,15 +101,9 @@ class Cool_prog():
 
 
 class Cool_class():
-    ###
-    # Constants
-    ###
     DEFAULT_PARENT = Cool_Id("Object", "0")
     NON_INHERITABLE = ["Int", "Bool", "String"]
 
-    ###
-    # initializer and helper
-    ###
     def __init__(self, name, parent = DEFAULT_PARENT, features = [], prog = None, usr_inherit = None):
         self.name = name
         self.prog = prog
@@ -167,19 +165,7 @@ class Cool_class():
         self.attributes = parent.get_attris()
         for a in temp.values():
             self.add_attris(a)
-        # inherited_attris  = parent.get_attris()
-        # for k in self.attributes.keys():
-        #     if k in inherited_attris:
-        #         print("loc B")
-        #         tc_error(  self.attributes[k].get_line(),
-        #                 "class %s redefines attribute %s"
-        #                 % (self.name, k))
-        #     inherited_attris[k] = self.attributes[k]
-        # self.attributes = inherited_attris
 
-    ###
-    # getter and setters
-    ###
     def get_methods(self):
         if not self.PulledFromParents:
             self.pull_from_parent()
@@ -205,10 +191,6 @@ class Cool_class():
                     "class %s redefines method %s" % (self.get_name(), m.get_name()))
         self.methods[m.get_name()] = m
 
-
-    ###
-    # TC methods
-    ###
     def tc_methods(self, inheritance):
         buffer = StringIO()
         methods = self.get_methods().values()

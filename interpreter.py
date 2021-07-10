@@ -1,8 +1,22 @@
+##################### ##################### ###############
+#                 COOL INTERPRETER IN PY
+# Author: Li Linhan
+# Date:   6/20/2021
+# Known issue:  
+#       - does not work well for recuisive COOL 
+#       programs, as the stack depth limit for python is
+#       kinda small and no tail-call optimization. 
+#       - Check this out: https://chrispenner.ca/posts/python-tail-recursion 
+#       - a tree traversal based evaluation could be another possible solution?
+##################### ##################### ###############
+
 from Helpers import *
 from env import *
 from Cool_expr import *
 import sys
 
+# this is dangerous.
+# and it does not work, the program just quit without giving any error message...
 sys.setrecursionlimit(99999)
 
 
@@ -61,8 +75,6 @@ class Cool_Prog():
         return count
 
 
-
-
 class Cool_attri():
     def read(fin):
         init = fin.readline()[:-1]
@@ -78,6 +90,7 @@ class Cool_attri():
         self.type = type
         self.init = init
 
+
 class Cool_method():
     def read(fin):
         name = fin.readline()[:-1]
@@ -90,6 +103,7 @@ class Cool_method():
         self.name = name
         self.formals = formals
         self.body = body
+
 
 class Evaluator():
     def __init__(self, prog):
@@ -391,8 +405,6 @@ def evaluate_cl_type(inStream):
     prog.read()
     e = Evaluator(prog)
     return e.run()
-
-
 
 
 if __name__ == "__main__":

@@ -1,3 +1,7 @@
+##################### ##################### ###############
+# utils for interpretor.
+# defines runtime enviroment and cool values
+##################### ##################### ###############
 from copy import deepcopy
 from numpy import int32
 

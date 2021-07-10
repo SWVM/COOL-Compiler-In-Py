@@ -3,7 +3,10 @@
 # Author: Li Linhan
 # Date:   5/31/2021
 # Dependency:
-#     PLY (Python Lex-Yacc)
+#     PLY (Python Lex-Yacc) 
+# Known issue: 
+#       - Might have some issue with some white-space 
+#       character that works differently in UNIX/Windows
 ##################### ##################### ###############
 
 from io import StringIO
@@ -257,8 +260,6 @@ def p_expression_false(p):
     '''
     p[0] = ("false", p.lineno(1))
 
-
-
 def p_arg_list(p):
     '''
     arg_list : expression arg_list_tail
@@ -352,7 +353,6 @@ parser = yacc.yacc()
 ########################   Parser rules ends       ############################
 ########################   Parser rules ends       ############################
 ########################   Parser rules ends       ############################
-
 
 class AST_Printer():
     def __init__(self, ast):
@@ -499,7 +499,6 @@ class CL_LEX_tokenizer():
         self.tokens = []
         self.read_tokens()
 
-
     # ugly code that works for valid .cl-lex file
     def read_tokens(self):
         fin = self.inStream
@@ -519,7 +518,6 @@ class CL_LEX_tokenizer():
         self.ptr = -1
         self.len = len(self.tokens)
         fin.close()
-
 
     # x.token() function required by the parser.
     def token(self):

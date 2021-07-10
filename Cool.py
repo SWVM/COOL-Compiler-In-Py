@@ -1,3 +1,13 @@
+##################### ##################### ###############
+#                 COOL INTERPRETOR IN PY
+# Author: Li Linhan
+# Date:   7/10/2021
+# Dependency:
+#       numpy(Int32)
+#       PLY 
+# Known issue: 
+#       check parser and interpreter for details.
+##################### ##################### ###############
 from env import Cool_value
 from io import StringIO
 from lexer import get_toks_stream
@@ -19,17 +29,9 @@ arg_parser.add_argument("--parse", action="store_true",
                         help="emit cl-ast file(cool abstract syntax tree)")
 arg_parser.add_argument("--type", action="store_true",
                         help="emit cl-type file(type checked ast)")
-# arg_parser.add_argument("--class-map", action="store_true",
-#                         help="emit cl-type file(classes & attributes)")
-# arg_parser.add_argument("--imp-map", action="store_true",
-#                         help="emit cl-type file(classes & methods)")
-# arg_parser.add_argument("--parent-map", action="store_true",
-#                         help="emit cl-type file(classes & inheritance)")
 
 args = arg_parser.parse_args()
-# args = arg_parser.parse_args( ["~/Documents/Git/COOL-Compiler-In-Py/Interpreter/test.cl-type"] )
 fname, fext = os.path.splitext(args.input_file[0])
-# args.lex
 
 stages = [  get_toks_stream,
             get_ast_stream,
