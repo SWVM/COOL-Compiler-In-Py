@@ -544,6 +544,7 @@ if __name__ == '__main__':
 
     inputStream = open(input_file_name, "r")
     ast_buff = get_ast_stream(inputStream)
+    inputStream.close()
 
     f_out = open(out_file_name, "w")
     f_out.write(ast_buff.getvalue())

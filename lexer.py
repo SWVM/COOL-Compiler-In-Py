@@ -282,8 +282,9 @@ def get_toks_stream(inStream):
 
 if __name__ == '__main__':
     import sys
-    file_path = sys.argv[1]
-    out_buffer = get_toks_stream(file_path)
+    fin = open(sys.argv[1], "r")
+    out_buffer = get_toks_stream(fin)
+    fin.close()
 
     f = open(sys.argv[1]+"-lex-test", "w")
     f.write(out_buffer.getvalue())
