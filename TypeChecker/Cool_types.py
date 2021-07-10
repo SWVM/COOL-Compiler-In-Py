@@ -3,7 +3,7 @@ from Cool_expr import *
 from io import StringIO
 # will have to pass typing enviroment as OJB
 
-
+Cool_expr.set_MODE("AST")
 class Cool_prog():
     ###
     # initializer and helper codes
@@ -19,7 +19,7 @@ class Cool_prog():
             self.add_class(c)
     def add_class(self, c):
         if c.get_name() in self.classes:
-            error(  c.get_line(),
+            tc_error(  c.get_line(),
                     "class %s redefined" % (c.get_name()))
         if c.parent:
             self.inheritance.add_edge(c.parent.get_name(), c.get_name())
@@ -43,7 +43,7 @@ class Cool_prog():
     def tc_pre_check(self):
         cycle = self.inheritance.get_cycle()
         if cycle:
-            error(  "0",
+            tc_error(  "0",
                     "inheritance cycle: %s" % (cycle))
         self.check_main()
 
@@ -82,16 +82,16 @@ class Cool_prog():
     def check_main(self):
         class_Main = self.classes.get("Main")
         if not class_Main:
-            error(  "0",
+            tc_error(  "0",
                     "class Main not found")
 
         method_main= class_Main.get_methods().get("main")
         if not method_main:
-            error(  "0",
+            tc_error(  "0",
                     "class Main method main not found")
 
         if len(method_main.formals) != 0:
-            error(  "0",
+            tc_error(  "0",
                     "class Main method main with 0 parameters not found")
 
 
@@ -137,10 +137,10 @@ class Cool_class():
             parent = Cool_class.DEFAULT_PARENT
 
         if cname.get_name() == "SELF_TYPE":
-            error(  cname.get_line(),
+            tc_error(  cname.get_line(),
                     "class named SELF_TYPE")
         if parent != None and parent.name in Cool_class.NON_INHERITABLE:
-            error(  parent.get_line(),
+            tc_error(  parent.get_line(),
                     "class %s inherits from %s" % (cname.get_name(), parent.get_name()))
 
         features = read_lst(Cool_feature.read, fin, args=[cname.get_name()])
@@ -153,7 +153,7 @@ class Cool_class():
         try:
             parent = self.prog.fetch_class(self.parent)
         except:
-            error(  self.parent.get_line(),
+            tc_error(  self.parent.get_line(),
                     "class %s inherits from unknown class %s" % (self.get_name(), self.parent.get_name()))
 
         inherited_m = parent.get_methods()
@@ -171,7 +171,7 @@ class Cool_class():
         # for k in self.attributes.keys():
         #     if k in inherited_attris:
         #         print("loc B")
-        #         error(  self.attributes[k].get_line(),
+        #         tc_error(  self.attributes[k].get_line(),
         #                 "class %s redefines attribute %s"
         #                 % (self.name, k))
         #     inherited_attris[k] = self.attributes[k]
@@ -196,12 +196,12 @@ class Cool_class():
         return self.name.get_line()
     def add_attris(self, a):
         if a.get_name() in self.attributes:
-            error(  a.get_line(),
+            tc_error(  a.get_line(),
                     "class %s redefines attribute %s" % (self.get_name(), a.get_name()))
         self.attributes[a.get_name()] = a
     def add_method(self, m):
         if m.get_name() in self.methods:
-            error(  m.get_line(),
+            tc_error(  m.get_line(),
                     "class %s redefines method %s" % (self.get_name(), m.get_name()))
         self.methods[m.get_name()] = m
 
@@ -267,7 +267,7 @@ class Cool_feature():
             name = Cool_Id.read(fin)
             atype = Cool_Id.read(fin)
             if name.get_name() == "self":
-                error(  name.get_line(),
+                tc_error(  name.get_line(),
                         "class %s has an attribute named self" % (owner))
             if ftype == "attribute_init":
                 expr = Cool_expr.read(fin)
@@ -315,14 +315,14 @@ class Cool_attri(Cool_feature):
         if declared_type == "SELF_TYPE":
             declared_type = env.get_selftype()
         if not env.has_type(declared_type):
-            error(  self.declared_type.get_line(),
+            tc_error(  self.declared_type.get_line(),
                     "class %s has attribute %s with unknown type %s"
                     % (self.owner, self.get_name(), declared_type))
 
         if self.init_expr:
             init_type = self.init_expr.tc(env)
             if not env.is_parent_child(declared_type, init_type):
-                error(  self.get_line(),
+                tc_error(  self.get_line(),
                         "%s does not conform to %s in initialized attribute"
                         % (init_type, declared_type))
         return declared_type
@@ -358,15 +358,15 @@ class Cool_method(Cool_feature):
             fname = f.get_name()
             ftype = Cool_type(f.get_type())
             if fname == "self":
-                error(  f.get_line(),
+                tc_error(  f.get_line(),
                         "class %s has method %s with formal parameter named self"
                         % (self.owner, self.name.get_name()))
             if not env.has_type(ftype):
-                error(  f.declared_type.get_line(),
+                tc_error(  f.declared_type.get_line(),
                         "class %s has method %s with formal parameter of unknown type %s"
                         % (self.owner, self.name.get_name(), f.get_type()))
             if fname in formal_vars:
-                error(  f.get_line(),
+                tc_error(  f.get_line(),
                         "class %s has method %s with duplicate formal parameter named %s"
                         % (self.owner.get_name(), self.get_name(), f.get_name()))
             formal_vars[fname] = ftype
@@ -375,12 +375,12 @@ class Cool_method(Cool_feature):
         if rtype == "SELF_TYPE":
             rtype = env.get_selftype()
         if not env.has_type(rtype):
-            error(  self.declared_type.get_line(),
+            tc_error(  self.declared_type.get_line(),
                     "class %s has method %s with unknown return type %s"
                     % (self.owner, self.name, rtype))
         expr_type     = self.body_expr.tc(env)
         if not env.is_parent_child(rtype, expr_type):
-            error(  self.get_line(),
+            tc_error(  self.get_line(),
                     "%s does not conform to %s in method %s"
                     % (expr_type, rtype, self.get_name()))
         return rtype
@@ -389,16 +389,16 @@ class Cool_method(Cool_feature):
         sfs = self.get_formals()
         pfs = pm.get_formals()
         if len(sfs) != len(pfs):
-            error(  self.get_line(),
+            tc_error(  self.get_line(),
                     "class %s redefines method %s and changes number of formals"
                     % (self.owner, self.get_name()))
         if self.return_type != pm.return_type:
-            error(  self.declared_type.get_line(),
+            tc_error(  self.declared_type.get_line(),
                     "class %s redefines method %s and changes return type (from %s to %s)"
                     % (self.owner, self.get_name(), pm.return_type, self.return_type))
         for i in range(len(sfs)):
             if sfs[i].get_type() != pfs[i].get_type():
-                error(  sfs[i].get_line(),
+                tc_error(  sfs[i].get_line(),
                         "class %s redefines method %s and changes type of formal %s"
                         % (self.owner, self.get_name(), sfs[i].get_name()))
 

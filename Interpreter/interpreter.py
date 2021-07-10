@@ -1,9 +1,8 @@
-from helper import error
-from helper import read_lst
+from Helpers import *
 from env import *
 from Cool_expr import *
 import sys
-
+Cool_expr.set_MODE("ANNOTATED_AST")
 sys.setrecursionlimit(99999)
 
 class Cool_Prog():
@@ -98,7 +97,7 @@ class Evaluator():
 
     def push(self, line):
         if self.call_stack > 1000:
-            error(line, "stack overflow")
+            runtime_error(line, "stack overflow")
         self.call_stack += 1
 
     def pop(self):
@@ -122,7 +121,7 @@ class Evaluator():
                     return val
 
                 elif isinstance(exp, Expr_Integer):
-                    return Cool_int(exp.int_value)
+                    return Cool_int(int32(exp.int_value))
 
                 elif isinstance(exp, Expr_String):
                     str = exp.str_value
@@ -149,7 +148,7 @@ class Evaluator():
                         return v1-v2
                     elif exp.op == "divide":
                         if v2 == Cool_int(0):
-                            error(exp.line, "division by zero")
+                            runtime_error(exp.line, "division by zero")
                         return v1/v2
 
                 elif isinstance(exp, Expr_New):
@@ -195,7 +194,7 @@ class Evaluator():
                     v0 = self.eval(so, e, expr)
                     cname = v0.get_type()
                     if cname == "void":
-                        error(line, "dispatch on void")
+                        runtime_error(line, "dispatch on void")
                     # get method
                     formals = self.prog.get_formals(cname, mname)
                     locs    = [self.s.malloc() for f in formals]
@@ -223,7 +222,7 @@ class Evaluator():
                     v0 = self.eval(so, e, expr)
                     cname = v0.get_type()
                     if cname == "void":
-                        error(line, "static dispatch on void")
+                        runtime_error(line, "static dispatch on void")
                     # get method
                     formals = self.prog.get_formals(target, mname)
                     locs    = [self.s.malloc() for f in formals]
@@ -286,7 +285,7 @@ class Evaluator():
                     elif op == "le":
                         return Cool_bool(v_lhs.value <= v_rhs.value)
                     else:
-                        error("0", "CMP MISS MATHCING")
+                        runtime_error("0", "CMP MISS MATHCING")
 
                 elif isinstance(exp, Expr_Equal):
                     v_lhs = self.eval(so, e, exp.lhs)
@@ -324,11 +323,11 @@ class Evaluator():
                     branches = exp.elements
                     vt = v0.get_type()
                     if isinstance(v0, Cool_void):
-                        error(exp.line, "case on void")
+                        runtime_error(exp.line, "case on void")
                     branches = [ (self.prog.dist(b.get_type(), vt), b ) for b in branches ]
                     branches = sorted([ b for b in branches if b[0] > -1])
                     if not branches:
-                        error(exp.line, "case without matching branch: %s(...)" % vt)
+                        runtime_error(exp.line, "case without matching branch: %s(...)" % vt)
                     matched = branches[0][1]
                     
                     loc = self.s.malloc()
@@ -375,9 +374,9 @@ class Evaluator():
                             assert i<=len(str) and (i+l)<=len(str)
                             return Cool_string(str[i:i+l])
                         except:
-                            error("0", "String.substr out of range")
+                            runtime_error("0", "String.substr out of range")
                     else:
-                        error("","UNKNOWN INTERNAL")
+                        runtime_error("","UNKNOWN INTERNAL")
             except Recurse as r:
                 so = r.so
                 e  = r.e
