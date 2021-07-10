@@ -1,5 +1,4 @@
 from io import StringIO
-from Cool_types import Cool_prog
 from Cool_types import *
 from Helpers import *
 
