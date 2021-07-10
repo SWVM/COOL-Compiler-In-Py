@@ -286,6 +286,6 @@ if __name__ == '__main__':
     out_buffer = get_toks_stream(fin)
     fin.close()
 
-    f = open(sys.argv[1]+"-lex-test", "w")
+    f = open(sys.argv[1]+"-lex", "w")
     f.write(out_buffer.getvalue())
     f.close()

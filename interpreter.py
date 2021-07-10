@@ -2,8 +2,9 @@ from Helpers import *
 from env import *
 from Cool_expr import *
 import sys
-Cool_expr.set_MODE("ANNOTATED_AST")
+
 sys.setrecursionlimit(99999)
+
 
 class Cool_Prog():
     def __init__(self, inStream):
@@ -13,6 +14,7 @@ class Cool_Prog():
         self.pmap = {}
 
     def read(self):
+        Cool_expr.set_MODE("ANNOTATED_AST")
         self.read_class_map()
         self.read_imp_map()
         self.read_parent_map()
@@ -388,7 +390,7 @@ def evaluate_cl_type(inStream):
     prog = Cool_Prog(inStream)
     prog.read()
     e = Evaluator(prog)
-    e.run()
+    return e.run()
 
 
 

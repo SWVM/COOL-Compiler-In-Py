@@ -540,7 +540,7 @@ def get_ast_stream(inStream):
 if __name__ == '__main__':
     import sys
     input_file_name = sys.argv[1]
-    out_file_name = input_file_name[:-3] + "ast-test"
+    out_file_name = input_file_name[:-3] + "ast"
 
     inputStream = open(input_file_name, "r")
     ast_buff = get_ast_stream(inputStream)

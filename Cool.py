@@ -1,9 +1,14 @@
-from TypeChecker.typechecker import get_type_checked_ast
-from Interpreter.interpreter import evaluate_cl_type
+from env import Cool_value
+from io import StringIO
+from lexer import get_toks_stream
+from parser import get_ast_stream
+from typechecker import get_type_checked_ast
+from interpreter import evaluate_cl_type
+from sys import argv
+from functools import reduce
 import argparse
 import os
-from Lexing.lex import get_toks_stream
-from Parser.parser import get_ast_stream
+
 
 arg_parser = argparse.ArgumentParser(description="Cool Interpretor")
 arg_parser.add_argument("input_file", type=str, nargs=1,
@@ -14,35 +19,64 @@ arg_parser.add_argument("--parse", action="store_true",
                         help="emit cl-ast file(cool abstract syntax tree)")
 arg_parser.add_argument("--type", action="store_true",
                         help="emit cl-type file(type checked ast)")
-arg_parser.add_argument("--class-map", action="store_true",
-                        help="emit cl-type file(classes & attributes)")
-arg_parser.add_argument("--imp-map", action="store_true",
-                        help="emit cl-type file(classes & methods)")
-arg_parser.add_argument("--parent-map", action="store_true",
-                        help="emit cl-type file(classes & inheritance)")
+# arg_parser.add_argument("--class-map", action="store_true",
+#                         help="emit cl-type file(classes & attributes)")
+# arg_parser.add_argument("--imp-map", action="store_true",
+#                         help="emit cl-type file(classes & methods)")
+# arg_parser.add_argument("--parent-map", action="store_true",
+#                         help="emit cl-type file(classes & inheritance)")
 
-# args = arg_parser.parse_args()
-args = arg_parser.parse_args( ["~/Documents/Git/COOL-Compiler-In-Py/Interpreter/test.cl-type"] )
+args = arg_parser.parse_args()
+# args = arg_parser.parse_args( ["~/Documents/Git/COOL-Compiler-In-Py/Interpreter/test.cl-type"] )
 fname, fext = os.path.splitext(args.input_file[0])
 # args.lex
 
+stages = [  get_toks_stream,
+            get_ast_stream,
+            get_type_checked_ast,
+            evaluate_cl_type
+            ]
+file_ext= [ "",
+            ".cl-lex",
+            ".cl-ast",
+            ".cl-type"
+            ]
+
+
 if fext == ".cl":
-    IO_source = open(fname+".cl", "r")
+    s = 0
 elif fext == ".cl-lex":
-    IO_lex = open(fname+".cl-lex", "r")
+    s = 1
 elif fext == ".cl-ast":
-    IO_ast = open(fname+".cl-ast", "r")
+    s = 2
 elif fext == ".cl-type":
-    IO_type = open(fname+".cl-type", "r")
+    s = 3
 else:
-    raise Exception("Error: unknown file type...")
+    raise Exception("Unknown File type")
 
-IO_lex = get_toks_stream(IO_source)
-IO_ast = get_ast_stream(IO_lex)
-IO_type= get_type_checked_ast(IO_ast)
-evaluate_cl_type(IO_type)
+if args.lex:
+    e = 1
+elif args.parse:
+    e = 2
+elif args.type:
+    e = 3
+else:
+    e = 4
 
+inStream = open(args.input_file[0], "r")
+outStream= reduce(  lambda val, ele : ele(val), 
+                    stages[s:e],
+                    inStream 
+                    )
+inStream.close()
 
-
-print(args)
-
+if inStream is outStream:
+    pass
+elif isinstance(outStream, StringIO):
+    fout = open( fname + file_ext[e], "w+")
+    fout.write( outStream.getvalue() )
+    fout.close()
+elif isinstance(outStream, Cool_value):
+    print("Program exited with value: %s" % outStream)
+else:
+    raise Exception("sth wrong...")

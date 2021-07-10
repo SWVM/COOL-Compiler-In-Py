@@ -59,6 +59,8 @@ class Cool_value():
             return {}
     def copy(self):
         return deepcopy(self)
+    def __str__(self):
+        return str(self.value)
 
 class Cool_int(Cool_value):
     def __init__(self, value = int32(0)):
@@ -81,7 +83,7 @@ class Cool_string(Cool_value):
     def __init__(self, value = ""):
         self.length = len(value)
         super().__init__("String", value)
-
+    
 class Cool_bool(Cool_value):
     def __init__(self, value = False):
         super().__init__("Bool", value in ["true", True])
@@ -89,6 +91,8 @@ class Cool_bool(Cool_value):
 class Cool_obj(Cool_value):
     def __init__(self, type, attris):
         super().__init__(type, attris)
+    def __str__(self):
+        return "%s: %s" % (self.type, self.value)
 
 class Cool_void(Cool_value):
     def __init__(self):

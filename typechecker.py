@@ -3,9 +3,12 @@ from Cool_expr import *
 from Helpers import *
 
 
-Cool_expr.set_MODE("AST")
+
+
+
 class Cool_prog():
     def __init__(self, inStream):
+        Cool_expr.set_MODE("AST")
         self.inheritance = Pedigree()
         self.classes = {}
 
@@ -561,6 +564,6 @@ if __name__ == '__main__':
     ast = get_type_checked_ast(fin).getvalue()
     fin.close()
 
-    out = open(sys.argv[1][:-3] + "type-test", "w")
+    out = open(sys.argv[1][:-3] + "type", "w")
     out.write(ast)
     out.close()
