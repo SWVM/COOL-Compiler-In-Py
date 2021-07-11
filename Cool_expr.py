@@ -451,7 +451,9 @@ class Expr_Cmp(Cool_expr):
     def typeCheck(self, env):
         t1 = self.lhs.flush_types(env)
         t2 = self.rhs.flush_types(env)
-        if not (t1 == "Int" and t2 == "Int"):
+        if  (t1 in ["Int", "String", "Bool"] or \
+            t2 in ["Int", "String", "Bool"]) and \
+                t1 != t2:
             tc_error(  self.line,
                     "comparison between %s and %s"
                     % (t1, t2))

@@ -215,7 +215,8 @@ class Cool_class():
         o = {}
         o["self"] = Cool_type(self.get_name(), selftype = True)
         for a in self.get_attris().values():
-            o[a.get_name()] = Cool_type(a.get_type())
+            atype = a.get_type()
+            o[a.get_name()] = ( Cool_type(atype) if atype != "SELF_TYPE" else Cool_type(self.get_name(), selftype=True ))
         return o
 
     def get_init_env(self, inheritance):
