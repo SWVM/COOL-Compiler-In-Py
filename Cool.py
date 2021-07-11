@@ -79,6 +79,7 @@ elif isinstance(outStream, StringIO):
     fout.write( outStream.getvalue() )
     fout.close()
 elif isinstance(outStream, Cool_value):
-    print("Program exited with value: %s" % outStream)
+    # print("Program exited with value: %s" % outStream)
+    pass
 else:
     raise Exception("sth wrong...")
