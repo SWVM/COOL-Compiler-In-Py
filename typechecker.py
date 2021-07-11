@@ -350,7 +350,7 @@ class Cool_method(Cool_feature):
             if fname in formal_vars:
                 tc_error(  f.get_line(),
                         "class %s has method %s with duplicate formal parameter named %s"
-                        % (self.owner.get_name(), self.get_name(), f.get_name()))
+                        % (self.owner, self.get_name(), f.get_name()))
             formal_vars[fname] = ftype
         env.add_vars(formal_vars)
         rtype = Cool_type(self.declared_type.get_name())
@@ -359,7 +359,7 @@ class Cool_method(Cool_feature):
         if not env.has_type(rtype):
             tc_error(  self.declared_type.get_line(),
                     "class %s has method %s with unknown return type %s"
-                    % (self.owner, self.name, rtype))
+                    % (self.owner, self.name.get_name(), rtype))
         expr_type     = self.body_expr.tc(env)
         if not env.is_parent_child(rtype, expr_type):
             tc_error(  self.get_line(),

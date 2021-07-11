@@ -76,13 +76,13 @@ class Typing_env():
         if not (c.tname, m.name) in self.m:
             tc_error(  m.get_line(),
                     "unknown method %s in dispatch on %s"
-                    % (m, c))
+                    % (m.name, c.tname))
         return self.m[(c.tname, m.name)].signiture
     def get_method_return(self, c, m):
         if not (c.tname, m.name) in self.m:
             tc_error(  m.get_line(),
                     "unknown method %s in dispatch on %s"
-                    % (m, c))
+                    % (m.name, c.tname))
         return self.m[(c.tname, m.name)].return_type
     def typeof(self, cid):
         var_name = cid.get_name()
@@ -180,6 +180,9 @@ class Cool_expr():
 
 class Expr_Assign(Cool_expr):
     def typeCheck(self, env):
+        if self.var.get_name() == "self":
+            tc_error(   self.line,
+                    "cannot assign to self")
         vtype = env.typeof(self.var)
         etype = self.expr.flush_types(env)
         if not env.is_parent_child(vtype, etype):
@@ -308,7 +311,7 @@ class Expr_If(Cool_expr):
         predicate_type = self.predicate.flush_types(env)
         if not predicate_type == "Bool":
             tc_error(  self.predicate.line,
-                    "conditional has type %s instead of Bool"
+                    "predicate has type %s instead of Bool"
                     % (predicate_type))
         bt_type        = self.bt.flush_types(env)
         bf_type        = self.bf.flush_types(env)
@@ -616,8 +619,18 @@ class Expr_Let(Cool_expr):
 class Expr_Case(Cool_expr):
     def typeCheck(self, env):
         self.expr.flush_types(env)
+        seen = []
+        for t in self.elements:
+            if t.get_type() in seen:
+                tc_error(   t.name.line,
+                        "case branch type %s is bound twice" % t.get_type())
+            seen.append(t.get_type())
+            
         types = map(lambda x: x.typeCheck(env), self.elements)
         return reduce(lambda a,b: env.lub(a,b), types)
+
+
+
 
     class CaseElement(Cool_expr):
         def typeCheck(self, env):
@@ -631,6 +644,9 @@ class Expr_Case(Cool_expr):
             if vtype == "SELF_TYPE":
                 tc_error(  self.ctype.line,
                         "using SELF_TYPE as a case branch type is not allowed")
+            if not env.has_type(Cool_type(vtype)):
+                tc_error(  self.ctype.line,
+                        "unknown type %s" % vtype)
             env.add_var(vname, Cool_type(vtype))
             return expr.flush_types(env)
         def __init__(self, name, ctype, expr):
