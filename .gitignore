@@ -7,7 +7,8 @@
 parsetab.py
 parser.out
 cool.mac.bigsur.exe
-/Language_support/client/node_modules/*
-/Language_support/client/out/*
-/Language_support/server/node_modules/*
-/Language_support/server/out/*
+/Language-support/client/node_modules/*
+/Language-support/client/out/*
+/Language-support/server/node_modules/*
+/Language-support/server/out/*
+/Language-support/node_modules/*
