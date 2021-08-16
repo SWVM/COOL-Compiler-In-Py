@@ -1,6 +1,8 @@
 # COOL-Compiler-In-Py
 Another COOL compiler impelmented in Py
 
+Cool-compiler.py is the complete compiler.
+Cool-lsp is for the COOL language server. (take input from stdin)
 ## Usage:
 ```
 usage:
