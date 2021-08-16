@@ -10,9 +10,9 @@
 #       - a tree traversal based evaluation could be another possible solution?
 ##################### ##################### ###############
 
-from Helpers import *
-from env import *
-from Cool_expr import *
+from utils.Helpers import *
+from utils.env import *
+from utils.Cool_expr import *
 import sys
 
 # this is dangerous.

@@ -8,16 +8,18 @@
 # Known issue: 
 #       check parser and interpreter for details.
 ##################### ##################### ###############
-from env import Cool_value
-from io import StringIO
-from lexer import get_toks_stream
-from parser import get_ast_stream
-from typechecker import get_type_checked_ast
-from interpreter import evaluate_cl_type
-from sys import argv
-from functools import reduce
 import argparse
 import os
+from sys import argv
+from functools import reduce
+from io import StringIO
+
+from utils.env import Cool_value
+from Lexer.lexer import get_toks_stream
+from Parser.parser import get_ast_stream
+from Typechecker.typechecker import get_type_checked_ast
+from Interpreter.interpreter import evaluate_cl_type
+
 
 
 arg_parser = argparse.ArgumentParser(description="Cool Interpretor")
@@ -79,7 +81,7 @@ elif isinstance(outStream, StringIO):
     fout.write( outStream.getvalue() )
     fout.close()
 elif isinstance(outStream, Cool_value):
-    # print("Program exited with value: %s" % outStream)
+    print("Program exited with value: %s" % outStream)
     pass
 else:
     raise Exception("sth wrong...")

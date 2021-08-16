@@ -6,8 +6,8 @@
 #       - None
 ##################### ##################### ###############
 from io import StringIO
-from Cool_expr import *
-from Helpers import *
+from utils.Cool_expr import *
+from utils.Helpers import *
 
 
 class Cool_prog():
