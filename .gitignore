@@ -12,3 +12,4 @@ cool.mac.bigsur.exe
 /Language-support/server/node_modules/*
 /Language-support/server/out/*
 /Language-support/node_modules/*
+/.DS_Store
